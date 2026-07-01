@@ -99,6 +99,41 @@
         </form>
       </section>
 
+      <section class="casting-section" id="castingOverlay" hidden>
+        <article class="casting-panel" aria-live="polite">
+          <div class="casting-head">
+            <p class="eyebrow" id="castingPhase">籌策起卦中</p>
+            <h2 id="castingTitle">分二掛一，揲四歸奇</h2>
+            <p id="castingText">五十策用四十九，靜心定問，六爻自下而上成卦。</p>
+          </div>
+
+          <div class="casting-board">
+            <div class="stalk-field" id="stalkField" aria-hidden="true"></div>
+            <div class="count-grid">
+              <div>
+                <span>左策</span>
+                <strong id="leftCount">--</strong>
+              </div>
+              <div>
+                <span>右策</span>
+                <strong id="rightCount">--</strong>
+              </div>
+              <div>
+                <span>掛一</span>
+                <strong id="heldCount">--</strong>
+              </div>
+              <div>
+                <span>歸奇</span>
+                <strong id="removedCount">--</strong>
+              </div>
+            </div>
+          </div>
+
+          <div class="line-progress" id="lineProgress" aria-label="六爻進度"></div>
+          <div class="casting-log" id="castingLog"></div>
+        </article>
+      </section>
+
       <section class="result-section" id="result" hidden>
         <article class="result-hero" aria-live="polite">
           <div class="hexagram-stage">

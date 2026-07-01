@@ -241,10 +241,12 @@ const state = {
   selectedDomain: "career",
   libraryDomain: "career",
   installPrompt: null,
-  lastReading: null
+  lastReading: null,
+  isCasting: false
 };
 
 const $ = (selector) => document.querySelector(selector);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const HEXAGRAM_BY_NO = Object.fromEntries(HEXAGRAMS.map((hex) => [hex.no, hex]));
 const HEX_DETAIL_BY_NO = {};
@@ -339,6 +341,177 @@ function castReading(question, domainId) {
     changedNo,
     moving
   };
+}
+
+async function castReadingAnimated(question, domainId) {
+  const castLines = [];
+  const startedAt = Date.now();
+  showCastingPanel(question, domainId);
+  await sleep(520);
+
+  for (let lineIndex = 0; lineIndex < 6; lineIndex += 1) {
+    let total = 49;
+    const changes = [];
+    const position = lineIndex + 1;
+    updateCastingLineProgress(castLines, position);
+    setCastingCopy(
+      `第 ${position} 爻 · ${LINE_STAGES[lineIndex].name}`,
+      "取四十九策，分二象天地，掛一象人。"
+    );
+
+    for (let changeIndex = 0; changeIndex < 3; changeIndex += 1) {
+      const change = yarrowChange(total);
+      changes.push(change);
+      updateCastingChange(position, changeIndex + 1, change, total);
+      total = change.remain;
+      await sleep(680);
+    }
+
+    const line = {
+      position,
+      value: total / 4,
+      changes
+    };
+    castLines.push(line);
+    updateCastingLineProgress(castLines, position + 1);
+    appendCastingLog(
+      LINE_STAGES[lineIndex].name,
+      `${line.value} ${LINE_VALUE[line.value].label}`,
+      LINE_VALUE[line.value].nature
+    );
+    await sleep(360);
+  }
+
+  const primaryLines = castLines.map((line) => (line.value === 7 || line.value === 9 ? 1 : 0));
+  const changedLines = castLines.map((line, index) => {
+    if (line.value === 6) return 1;
+    if (line.value === 9) return 0;
+    return primaryLines[index];
+  });
+  const primaryNo = numberFromLines(primaryLines);
+  const changedNo = numberFromLines(changedLines);
+  const moving = castLines.filter((line) => LINE_VALUE[line.value].moving).map((line) => line.position);
+  const elapsed = Date.now() - startedAt;
+  if (elapsed < 12000) await sleep(12000 - elapsed);
+
+  setCastingCopy("六爻已成", "本卦、動爻與變卦已定，正在開卦解象。");
+  await sleep(650);
+
+  return {
+    id: window.crypto?.randomUUID?.() || String(Date.now()),
+    createdAt: new Date().toISOString(),
+    question,
+    domainId,
+    castLines,
+    primaryLines,
+    changedLines,
+    primaryNo,
+    changedNo,
+    moving
+  };
+}
+
+function showCastingPanel(question, domainId) {
+  const panel = $("#castingOverlay");
+  panel.hidden = false;
+  $("#result").hidden = true;
+  $("#castingPhase").textContent = `${domainById(domainId).label} · 籌策起卦`;
+  $("#castingTitle").textContent = "五十策用四十九";
+  $("#castingText").textContent = question
+    ? `所問：「${question}」。請稍候，正在依籌策法逐爻推演。`
+    : "未填問題也可起卦。請稍候，正在依籌策法逐爻推演。";
+  $("#castingLog").innerHTML = "";
+  setCastingCounts("--", "--", "--", "--");
+  renderStalkField();
+  updateCastingLineProgress([], 1);
+  panel.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function hideCastingPanel() {
+  $("#castingOverlay").hidden = true;
+}
+
+function setCastingCopy(title, text) {
+  $("#castingTitle").textContent = title;
+  $("#castingText").textContent = text;
+}
+
+function setCastingCounts(left, right, held, removed) {
+  $("#leftCount").textContent = left;
+  $("#rightCount").textContent = right;
+  $("#heldCount").textContent = held;
+  $("#removedCount").textContent = removed;
+}
+
+function updateCastingChange(position, changeNo, change, startTotal) {
+  const leftActive = change.left - change.leftRemainder;
+  const rightActive = change.right - change.held - change.rightRemainder;
+  setCastingCopy(
+    `第 ${position} 爻 · 第 ${changeNo} 變`,
+    `由 ${startTotal} 策分二，左 ${change.left}、右 ${change.right}；掛一後揲四，歸奇 ${change.removed}，餘 ${change.remain}。`
+  );
+  setCastingCounts(change.left, change.right, change.held, change.removed);
+  renderStalkField({
+    left: Math.max(0, leftActive),
+    right: Math.max(0, rightActive),
+    held: change.held,
+    removed: change.leftRemainder + change.rightRemainder
+  });
+  appendCastingLog(
+    `第 ${position} 爻`,
+    `第 ${changeNo} 變`,
+    `${startTotal} 去 ${change.removed} 留 ${change.remain}`
+  );
+}
+
+function renderStalkField(groups = { left: 24, right: 24, held: 1, removed: 0 }) {
+  const field = $("#stalkField");
+  const statuses = [
+    ...Array.from({ length: groups.left }, () => "left"),
+    ...Array.from({ length: groups.held }, () => "held"),
+    ...Array.from({ length: groups.right }, () => "right"),
+    ...Array.from({ length: groups.removed }, () => "removed")
+  ].slice(0, 49);
+
+  while (statuses.length < 49) statuses.push("removed");
+
+  field.innerHTML = statuses
+    .map((status, index) => {
+      const tilt = ((index % 9) - 4) * 2.4;
+      return `<span class="stalk ${status}" style="--tilt:${tilt}deg"></span>`;
+    })
+    .join("");
+}
+
+function updateCastingLineProgress(castLines, activePosition) {
+  const lineMap = new Map(castLines.map((line) => [line.position, line]));
+  $("#lineProgress").innerHTML = LINE_STAGES.map((stage, index) => {
+    const position = index + 1;
+    const line = lineMap.get(position);
+    const classes = ["line-slot"];
+    if (line) classes.push("complete");
+    if (!line && position === activePosition) classes.push("active");
+    const miniLine = line
+      ? `<span class="mini-line ${line.value === 7 || line.value === 9 ? "yang" : "yin"}"></span>`
+      : '<span class="mini-line yang" style="opacity:.18"></span>';
+    return `
+      <div class="${classes.join(" ")}">
+        <strong>${stage.name}</strong>
+        <small>${line ? `${line.value} ${LINE_VALUE[line.value].label}` : stage.place}</small>
+        ${miniLine}
+      </div>
+    `;
+  }).join("");
+}
+
+function appendCastingLog(title, value, detail) {
+  const log = $("#castingLog");
+  const entry = document.createElement("div");
+  entry.className = "casting-entry";
+  entry.innerHTML = `<strong>${title}</strong><span>${value}</span><small>${detail}</small>`;
+  log.append(entry);
+  while (log.children.length > 10) log.firstElementChild.remove();
+  log.scrollTop = log.scrollHeight;
 }
 
 function numberFromLines(lines) {
@@ -646,13 +819,29 @@ function setupInstall() {
 }
 
 function setupEvents() {
-  $("#oracleForm").addEventListener("submit", (event) => {
+  $("#oracleForm").addEventListener("submit", async (event) => {
     event.preventDefault();
+    if (state.isCasting) return;
+    state.isCasting = true;
     const question = $("#question").value.trim();
-    const reading = castReading(question, state.selectedDomain);
-    state.lastReading = reading;
-    renderReading(reading);
-    saveReading(reading);
+    const castButton = $("#castButton");
+    const clearButton = $("#clearButton");
+    castButton.disabled = true;
+    clearButton.disabled = true;
+    castButton.querySelector("span").textContent = "籌策運行中";
+
+    try {
+      const reading = await castReadingAnimated(question, state.selectedDomain);
+      state.lastReading = reading;
+      hideCastingPanel();
+      renderReading(reading);
+      saveReading(reading);
+    } finally {
+      state.isCasting = false;
+      castButton.disabled = false;
+      clearButton.disabled = false;
+      castButton.querySelector("span").textContent = "籌策起卦";
+    }
   });
 
   $("#clearButton").addEventListener("click", () => {
