@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0b3129" />
+    <meta name="color-scheme" content="dark" />
+    <title>奇幻線上易經卜卦</title>
+    <meta name="description" content="以籌策法起六爻，依問事方向解析六十四卦與變卦。" />
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" type="image/png" href="./assets/favicon.png" />
+    <link rel="apple-touch-icon" href="./assets/icon-192.png" />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="scene" aria-hidden="true"></div>
+    <div class="shade" aria-hidden="true"></div>
+
+    <div class="floaters" aria-hidden="true">
+      <svg class="sigil sigil-a" viewBox="0 0 64 64">
+        <path d="M8 32h48M8 18h48M8 46h20m8 0h20" />
+      </svg>
+      <svg class="sigil sigil-b" viewBox="0 0 64 64">
+        <circle cx="32" cy="32" r="21" />
+        <path d="M32 11c10 8 10 34 0 42M32 11c-10 8-10 34 0 42" />
+        <circle cx="32" cy="22" r="4" />
+        <circle cx="32" cy="42" r="4" />
+      </svg>
+      <svg class="sigil sigil-c" viewBox="0 0 64 64">
+        <path d="M12 16h40M12 32h16m8 0h16M12 48h40" />
+      </svg>
+      <svg class="sigil sigil-d" viewBox="0 0 64 64">
+        <path d="M32 7 54 45H10L32 7Z" />
+        <path d="M24 45 32 31l8 14" />
+      </svg>
+      <svg class="sigil sigil-e" viewBox="0 0 64 64">
+        <path d="M16 14h32M16 32h12m8 0h12M16 50h12m8 0h12" />
+      </svg>
+    </div>
+
+    <header class="topbar">
+      <a class="brand" href="#oracle" aria-label="奇幻線上易經卜卦">
+        <img src="./assets/icon-192.png" alt="" />
+        <span>易策玄占</span>
+      </a>
+      <nav class="nav-pills" aria-label="主要區塊">
+        <a href="#oracle">起卦</a>
+        <a href="#library">卦典</a>
+        <a href="#history">紀錄</a>
+      </nav>
+      <button class="icon-button ghost" id="installButton" type="button" aria-label="安裝">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 17v2a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2" />
+        </svg>
+      </button>
+    </header>
+
+    <main>
+      <section class="oracle-section" id="oracle">
+        <div class="hero-copy">
+          <p class="eyebrow">籌策法 · 六爻成卦</p>
+          <h1>奇幻線上易經卜卦</h1>
+          <p class="lead">定問、取象、觀變。以六十四卦分判情勢，依問事方向落到可行之處。</p>
+        </div>
+
+        <form class="oracle-panel" id="oracleForm">
+          <div class="field">
+            <label for="question">所問之事</label>
+            <textarea id="question" rows="4" maxlength="180" placeholder="例如：這個合作案是否適合推進？"></textarea>
+          </div>
+
+          <div class="field">
+            <span class="field-label">問事方向</span>
+            <div class="domain-grid" id="domainGrid" role="radiogroup" aria-label="問事方向"></div>
+          </div>
+
+          <div class="method-strip" aria-label="籌策節奏">
+            <span>分二</span>
+            <span>掛一</span>
+            <span>揲四</span>
+            <span>歸奇</span>
+            <span>成爻</span>
+          </div>
+
+          <div class="button-row">
+            <button class="button primary" id="castButton" type="submit">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 2v20M7 5v14M17 5v14M4 9h16M4 15h16" />
+              </svg>
+              <span>籌策起卦</span>
+            </button>
+            <button class="button secondary" id="clearButton" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3" />
+              </svg>
+              <span>清空</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="result-section" id="result" hidden>
+        <article class="result-hero" aria-live="polite">
+          <div class="hexagram-stage">
+            <div class="hexagram-mark" id="primaryMark"></div>
+            <div class="hexagram-caption">
+              <span id="primaryNumber"></span>
+              <strong id="primaryName"></strong>
+              <small id="trigramPair"></small>
+            </div>
+          </div>
+          <div class="reading-summary">
+            <p class="eyebrow" id="readingMeta"></p>
+            <h2 id="readingTitle"></h2>
+            <p id="readingCore"></p>
+            <div class="tag-row" id="readingTags"></div>
+          </div>
+        </article>
+
+        <div class="reading-grid">
+          <article class="reading-panel">
+            <h3>此問所主</h3>
+            <p id="domainReading"></p>
+          </article>
+          <article class="reading-panel">
+            <h3>宜行</h3>
+            <p id="actionReading"></p>
+          </article>
+          <article class="reading-panel warning">
+            <h3>宜避</h3>
+            <p id="cautionReading"></p>
+          </article>
+        </div>
+
+        <div class="change-grid">
+          <article class="change-panel">
+            <h3>動爻</h3>
+            <div id="movingLines"></div>
+          </article>
+          <article class="change-panel">
+            <h3>變卦</h3>
+            <div class="changed-wrap" id="changedWrap"></div>
+          </article>
+        </div>
+
+        <details class="process-panel">
+          <summary>籌策紀錄</summary>
+          <div id="processLog" class="process-log"></div>
+        </details>
+      </section>
+
+      <section class="library-section" id="library">
+        <div class="section-heading">
+          <p class="eyebrow">六十四卦</p>
+          <h2>卦典速覽</h2>
+        </div>
+        <div class="library-tools">
+          <label class="search-box" for="hexSearch">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m16.5 16.5 4 4" />
+            </svg>
+            <input id="hexSearch" type="search" placeholder="搜尋卦名、卦序、關鍵字" />
+          </label>
+          <div class="mini-tabs" id="libraryDomains" aria-label="卦典問事方向"></div>
+        </div>
+        <div class="hex-card-grid" id="hexLibrary"></div>
+      </section>
+
+      <section class="history-section" id="history">
+        <div class="section-heading">
+          <p class="eyebrow">近占</p>
+          <h2>最近紀錄</h2>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </section>
+    </main>
+
+    <dialog class="hex-dialog" id="hexDialog">
+      <button class="icon-button dialog-close" id="dialogClose" type="button" aria-label="關閉">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+      <div id="dialogBody"></div>
+    </dialog>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

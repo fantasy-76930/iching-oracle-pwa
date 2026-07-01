@@ -1,0 +1,694 @@
+const DOMAINS = [
+  {
+    id: "love",
+    label: "感情",
+    scope: "關係互動",
+    action: "把真心、界線與承諾說清楚",
+    caution: "忌把不安包裝成試探",
+    lineFocus: "回應是否穩定"
+  },
+  {
+    id: "career",
+    label: "事業",
+    scope: "職責、合作與升遷",
+    action: "先釐清角色、資源與交付節點",
+    caution: "忌只看聲勢而忽略責任歸屬",
+    lineFocus: "權責是否對等"
+  },
+  {
+    id: "wealth",
+    label: "財運",
+    scope: "收入、投資與現金流",
+    action: "以可承受風險和保留現金為先",
+    caution: "忌急利、重押與未驗證消息",
+    lineFocus: "風險是否可控"
+  },
+  {
+    id: "health",
+    label: "健康",
+    scope: "身心狀態與作息",
+    action: "回到規律、檢查與可持續的照護",
+    caution: "忌硬撐或自行忽略明顯不適",
+    lineFocus: "壓力源是否已被處理"
+  },
+  {
+    id: "study",
+    label: "學業",
+    scope: "考試、技能與長期學習",
+    action: "拆小目標，固定複習與驗收",
+    caution: "忌追求花俏方法而少了基本功",
+    lineFocus: "基礎是否紮實"
+  },
+  {
+    id: "people",
+    label: "人際",
+    scope: "朋友、同事與社群",
+    action: "用事實建立信任，讓往來有分寸",
+    caution: "忌過度迎合或捲入他人是非",
+    lineFocus: "距離是否合宜"
+  },
+  {
+    id: "home",
+    label: "家宅",
+    scope: "家庭、居住與內部秩序",
+    action: "先安定家中節奏，再談外部變動",
+    caution: "忌用情緒處理長期結構問題",
+    lineFocus: "家中規矩是否清楚"
+  },
+  {
+    id: "decision",
+    label: "決策",
+    scope: "選擇、方向與時機",
+    action: "列出代價、退路與最小可行一步",
+    caution: "忌把衝動當成天命",
+    lineFocus: "時機是否成熟"
+  }
+];
+
+const ICONS = {
+  love: '<path d="M20.8 4.6a5.4 5.4 0 0 0-7.7 0L12 5.7l-1.1-1.1a5.4 5.4 0 1 0-7.7 7.7L12 21l8.8-8.7a5.4 5.4 0 0 0 0-7.7Z"/>',
+  career: '<path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><path d="M4 7h16v12H4z"/><path d="M4 12h16"/><path d="M9 12v2h6v-2"/>',
+  wealth: '<circle cx="12" cy="12" r="8"/><path d="M12 7v10M9 10c.5-1 1.5-1.5 3-1.5 1.8 0 3 1 3 2.3 0 1.5-1.2 2.2-3 2.2s-3 .7-3 2.2c0 1.3 1.2 2.3 3 2.3 1.5 0 2.5-.5 3-1.5"/>',
+  health: '<path d="M12 3v18M3 12h18"/><path d="M7 7h10v10H7z"/>',
+  study: '<path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v16H6.5A2.5 2.5 0 0 0 4 21.5v-16Z"/><path d="M8 7h8M8 11h7"/>',
+  people: '<path d="M16 11a4 4 0 1 0-8 0"/><path d="M4 21a8 8 0 0 1 16 0"/><path d="M19 8a3 3 0 0 1 1 5.8"/><path d="M21 21a6 6 0 0 0-3.3-5.4"/>',
+  home: '<path d="M3 11 12 4l9 7"/><path d="M5 10v10h14V10"/><path d="M9 20v-6h6v6"/>',
+  decision: '<circle cx="12" cy="12" r="9"/><path d="m15 9-2 5-4 1 2-5 4-1Z"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2"/>'
+};
+
+const TRIGRAMS = {
+  "111": { name: "乾", image: "天", symbol: "☰", trait: "剛健" },
+  "110": { name: "兌", image: "澤", symbol: "☱", trait: "悅納" },
+  "101": { name: "離", image: "火", symbol: "☲", trait: "明麗" },
+  "100": { name: "震", image: "雷", symbol: "☳", trait: "動發" },
+  "011": { name: "巽", image: "風", symbol: "☴", trait: "入順" },
+  "010": { name: "坎", image: "水", symbol: "☵", trait: "險陷" },
+  "001": { name: "艮", image: "山", symbol: "☶", trait: "止定" },
+  "000": { name: "坤", image: "地", symbol: "☷", trait: "承載" }
+};
+
+const HEX_PAIR_TO_NUMBER = {
+  "111|111": 1,
+  "111|110": 43,
+  "111|101": 14,
+  "111|100": 34,
+  "111|011": 9,
+  "111|010": 5,
+  "111|001": 26,
+  "111|000": 11,
+  "110|111": 10,
+  "110|110": 58,
+  "110|101": 38,
+  "110|100": 54,
+  "110|011": 61,
+  "110|010": 60,
+  "110|001": 41,
+  "110|000": 19,
+  "101|111": 13,
+  "101|110": 49,
+  "101|101": 30,
+  "101|100": 55,
+  "101|011": 37,
+  "101|010": 63,
+  "101|001": 22,
+  "101|000": 36,
+  "100|111": 25,
+  "100|110": 17,
+  "100|101": 21,
+  "100|100": 51,
+  "100|011": 42,
+  "100|010": 3,
+  "100|001": 27,
+  "100|000": 24,
+  "011|111": 44,
+  "011|110": 28,
+  "011|101": 50,
+  "011|100": 32,
+  "011|011": 57,
+  "011|010": 48,
+  "011|001": 18,
+  "011|000": 46,
+  "010|111": 6,
+  "010|110": 47,
+  "010|101": 64,
+  "010|100": 40,
+  "010|011": 59,
+  "010|010": 29,
+  "010|001": 4,
+  "010|000": 7,
+  "001|111": 33,
+  "001|110": 31,
+  "001|101": 56,
+  "001|100": 62,
+  "001|011": 53,
+  "001|010": 39,
+  "001|001": 52,
+  "001|000": 15,
+  "000|111": 12,
+  "000|110": 45,
+  "000|101": 35,
+  "000|100": 16,
+  "000|011": 20,
+  "000|010": 8,
+  "000|001": 23,
+  "000|000": 2
+};
+
+const HEXAGRAMS = [
+  { no: 1, name: "乾為天", theme: "剛健創始", summary: "主動之氣充足，適合立志、開局、承擔領導。成敗看是否正大而持久。", action: "先立原則，再把力量分階段推出", caution: "忌逞強、獨斷與把速度誤認成格局", keywords: ["創始", "領導", "自強"] },
+  { no: 2, name: "坤為地", theme: "承載順成", summary: "局勢重在接納、配合與厚實基礎。柔順不是退讓，而是讓萬事有可落之地。", action: "跟住可靠方向，穩住資源和人心", caution: "忌沒有主見，也忌急著證明自己", keywords: ["包容", "穩定", "跟進"] },
+  { no: 3, name: "水雷屯", theme: "草創艱難", summary: "新局剛起，阻力與混亂同時出現。此時不是失敗，而是秩序尚未形成。", action: "先解最卡的一點，求助可信同伴", caution: "忌躁進、硬闖與一次想完成全局", keywords: ["開端", "困難", "結盟"] },
+  { no: 4, name: "山水蒙", theme: "啟蒙求教", summary: "資訊未明，經驗不足，宜先學再判。能虛心受教，迷霧就會變成教材。", action: "找準老師、規則或參考標準", caution: "忌自作聰明、反覆試探同一問題", keywords: ["學習", "規範", "請益"] },
+  { no: 5, name: "水天需", theme: "等待養勢", summary: "事情需要時間成熟。等待不是空耗，而是保留體力、備妥條件。", action: "守住節奏，備好方案與資源", caution: "忌焦慮催促，尤其忌在風險未明時出手", keywords: ["等待", "準備", "耐心"] },
+  { no: 6, name: "天水訟", theme: "爭端辨明", summary: "分歧已成形，宜先釐清是非邊界。可談則談，必要時尋公正第三方。", action: "留下證據，把訴求說得簡短明確", caution: "忌意氣用事與把小爭執拖成大消耗", keywords: ["爭議", "界線", "公正"] },
+  { no: 7, name: "地水師", theme: "組織紀律", summary: "眾力可用，但需有名分、規矩與統率。此卦利於整隊，不利於散漫。", action: "確認指揮、分工和底線", caution: "忌人多口雜、賞罰不明", keywords: ["團隊", "紀律", "統率"] },
+  { no: 8, name: "水地比", theme: "親附結盟", summary: "事情靠連結而成，適合選邊、合作與建立互信。親近之前要看核心價值。", action: "靠近可信的人，明確彼此承諾", caution: "忌晚到、搖擺與只為利益結伴", keywords: ["結盟", "親近", "互信"] },
+  { no: 9, name: "風天小畜", theme: "小蓄待發", summary: "力量已有，但外在條件還只容許小步累積。先把細節收好，勿求爆發。", action: "累積小成果，補齊流程與作品", caution: "忌貪大、逞快與忽略微小裂縫", keywords: ["蓄積", "細節", "小成"] },
+  { no: 10, name: "天澤履", theme: "謹慎履行", summary: "身處有位階或風險的情境，禮節與分寸是護身符。行得正，就能過關。", action: "照規矩走，對上對下都保留敬意", caution: "忌踩線、挑釁權威與輕忽程序", keywords: ["分寸", "禮法", "踏實"] },
+  { no: 11, name: "地天泰", theme: "通泰交融", summary: "上下相通，陰陽相交，局勢順暢。適合推動合作、擴張與修復。", action: "趁勢連結資源，把好局做成制度", caution: "忌得意忘形，順境更要防鬆散", keywords: ["通達", "和合", "開展"] },
+  { no: 12, name: "天地否", theme: "閉塞不交", summary: "上下不通，理念與現實互不相應。此時宜守正蓄力，不宜強求理解。", action: "保留核心，減少無效溝通", caution: "忌硬推、抱怨與在錯誤場域求認同", keywords: ["閉塞", "守正", "隔絕"] },
+  { no: 13, name: "天火同人", theme: "同道同行", summary: "以共同理念聚眾，可得人和。越是公開坦蕩，越能擴大支持。", action: "說清共同目標，讓合作透明", caution: "忌小圈子私心與口號大於實作", keywords: ["同盟", "公開", "理想"] },
+  { no: 14, name: "火天大有", theme: "盛有光明", summary: "資源、能見度與成果在手。能謙恭用富，才是真正的大有。", action: "善用已有優勢，分配成果與責任", caution: "忌炫耀、浪費與忽略後續管理", keywords: ["豐盛", "資源", "責任"] },
+  { no: 15, name: "地山謙", theme: "謙退受益", summary: "低身處世反而得助。此卦重在不爭虛名，讓實力自然被看見。", action: "把姿態放低，把品質做高", caution: "忌自卑，也忌假謙讓真計較", keywords: ["謙遜", "平衡", "受益"] },
+  { no: 16, name: "雷地豫", theme: "預備喜悅", summary: "氣勢被喚起，適合動員、排程與鼓舞。喜悅要落在準備上才不散。", action: "先排節奏，再讓眾人跟上", caution: "忌沉迷期待、只喊熱情不做準備", keywords: ["動員", "預備", "喜悅"] },
+  { no: 17, name: "澤雷隨", theme: "隨勢而行", summary: "順著可靠的人事流向前進。隨不是盲從，而是辨明何者值得跟。", action: "觀察主流節奏，選擇可信方向", caution: "忌失去原則、被情緒或潮流帶走", keywords: ["跟隨", "彈性", "選擇"] },
+  { no: 18, name: "山風蠱", theme: "整弊修腐", summary: "舊問題已積成病根，不能再粉飾。修復需要面對原因，而非只換表面。", action: "盤點舊帳，重建規則與責任", caution: "忌拖延、推諉與只治標不治本", keywords: ["修整", "除弊", "更新"] },
+  { no: 19, name: "地澤臨", theme: "親臨照看", summary: "好的機會正在靠近，也需要你親自靠近。用溫和而有力的方式掌握局面。", action: "主動關心關鍵人事，及早布局", caution: "忌居高臨下或熱度過後失守", keywords: ["靠近", "照看", "擴展"] },
+  { no: 20, name: "風地觀", theme: "觀照取象", summary: "先看全局，再判吉凶。你被別人觀察，也正在觀察局勢。", action: "放慢判斷，收集可驗證訊號", caution: "忌只看表演、不看實質", keywords: ["觀察", "示範", "洞察"] },
+  { no: 21, name: "火雷噬嗑", theme: "咬合決斷", summary: "中間有阻隔，需要明確處置。規則、裁決與執行力會打開僵局。", action: "切開問題，按規矩處理違失", caution: "忌含糊寬縱，也忌處罰過當", keywords: ["決斷", "規則", "清障"] },
+  { no: 22, name: "山火賁", theme: "文飾成美", summary: "形象、禮貌與包裝能增光，但本質仍要站得住。美在適度，不在掩飾。", action: "修飾呈現方式，保留真材實料", caution: "忌過度包裝、只顧面子", keywords: ["修飾", "形象", "節度"] },
+  { no: 23, name: "山地剝", theme: "剝落去舊", summary: "支撐正在脫落，不宜硬撐高處。先保根本，等待下個循環。", action: "縮小戰線，守住最核心的資源", caution: "忌戀棧、加碼與粉飾危機", keywords: ["剝落", "收縮", "保根"] },
+  { no: 24, name: "地雷復", theme: "回返新生", summary: "陽氣初回，轉機很小但真實。適合重啟、復原與回到正路。", action: "從最小可持續的一步重新開始", caution: "忌急著擴大，初復之氣需要養", keywords: ["回復", "重啟", "正軌"] },
+  { no: 25, name: "天雷無妄", theme: "真誠無妄", summary: "以真實動機行事則吉。越想操弄結果，越容易招來意外。", action: "照事實走，讓行動回到初心", caution: "忌妄念、僥倖與過度算計", keywords: ["真誠", "自然", "不妄"] },
+  { no: 26, name: "山天大畜", theme: "大蓄養德", summary: "大能量被蓄住，適合修練、儲備與等待大用。先收束，後發力。", action: "沉澱實力，建立長期資產", caution: "忌急於證明，蓄而不養會成壓抑", keywords: ["積蓄", "修練", "大用"] },
+  { no: 27, name: "山雷頤", theme: "養正慎言", summary: "此卦看入口之物與出口之言。養得正，身心與局勢都會穩。", action: "整理飲食、資訊與說話方式", caution: "忌亂吃、亂聽、亂承諾", keywords: ["養護", "言語", "節制"] },
+  { no: 28, name: "澤風大過", theme: "重壓過梁", summary: "責任或情勢已超過常態承載。要補強結構，不可只靠意志。", action: "找支點、分擔重量、先救關鍵處", caution: "忌硬扛到斷裂，也忌假裝無事", keywords: ["超載", "支撐", "非常"] },
+  { no: 29, name: "坎為水", theme: "重險習坎", summary: "險中有險，需靠熟練與誠信穿越。不要怕水深，要怕亂游。", action: "依流程前進，重複確認每一步", caution: "忌冒險、隱瞞與情緒化判斷", keywords: ["險阻", "練習", "誠信"] },
+  { no: 30, name: "離為火", theme: "明照依附", summary: "光明需要所依，才不成飄火。適合展現、學習與看清真相。", action: "讓資訊透明，找到可依附的制度", caution: "忌情緒燃燒、只追求曝光", keywords: ["光明", "依附", "洞見"] },
+  { no: 31, name: "澤山咸", theme: "感應相通", summary: "彼此有感，互相牽動。成事靠真切回應，不靠強迫。", action: "細聽對方訊號，用柔和方式靠近", caution: "忌操控、急於定義關係", keywords: ["感應", "吸引", "互動"] },
+  { no: 32, name: "雷風恆", theme: "長久有常", summary: "貴在持續與守常。若方向正確，穩定比新鮮更有力。", action: "固定節奏，把承諾變成日常", caution: "忌三分鐘熱度，也忌僵化不調整", keywords: ["持久", "規律", "承諾"] },
+  { no: 33, name: "天山遯", theme: "退避保全", summary: "退不是敗，而是保留主體性。遠離不利位置，才能再取先機。", action: "撤出消耗場，保留籌碼與尊嚴", caution: "忌戀戰、逞口舌與退得太晚", keywords: ["退避", "保全", "遠害"] },
+  { no: 34, name: "雷天大壯", theme: "強盛守正", summary: "力量正盛，動作很容易放大結果。越有力量，越要守正。", action: "把氣勢用在正當目標與硬實力", caution: "忌仗勢、衝撞與勝利後失控", keywords: ["強盛", "正當", "節制"] },
+  { no: 35, name: "火地晉", theme: "光明進升", summary: "能見度上升，適合呈現成果與爭取位置。進步來自穩定發光。", action: "公開成果，接住更多責任", caution: "忌急功近利與忽略背後支持者", keywords: ["進升", "榮耀", "呈現"] },
+  { no: 36, name: "地火明夷", theme: "韜光護明", summary: "光被遮蔽，環境不利直接發亮。保護核心，低調穿過暗處。", action: "收斂鋒芒，保存證據與實力", caution: "忌硬碰、炫耀與把真心交給錯人", keywords: ["藏明", "保護", "暗處"] },
+  { no: 37, name: "風火家人", theme: "內正外安", summary: "內部秩序決定外部成敗。角色清楚、言行有度，家與團隊就安。", action: "重整分工、規矩與照顧責任", caution: "忌情緒勒索、責任混亂", keywords: ["家道", "分工", "內修"] },
+  { no: 38, name: "火澤睽", theme: "分歧求同", summary: "立場不同，但未必不能共事。小同可求，大同不可強。", action: "先找共同利益，保留差異空間", caution: "忌逼對方完全一致或擴大誤解", keywords: ["分歧", "差異", "小同"] },
+  { no: 39, name: "水山蹇", theme: "阻難繞行", summary: "前方有阻，直走不利。求助、改道、等待，都是智慧。", action: "轉向可行路線，請教有經驗的人", caution: "忌逞強硬闖與把阻力看成羞辱", keywords: ["艱阻", "改道", "求援"] },
+  { no: 40, name: "雷水解", theme: "解結釋壓", summary: "緊繃開始鬆動，適合解除誤會、清理壓力與重啟流動。", action: "先處理最急的結，再讓事情散開", caution: "忌解開後又重回舊模式", keywords: ["解除", "釋放", "緩和"] },
+  { no: 41, name: "山澤損", theme: "減損成益", summary: "少一分浮華，多一分真用。願意取捨，反而讓核心變強。", action: "刪掉低效消耗，把資源給要處", caution: "忌小氣計較，也忌削弱根本", keywords: ["取捨", "減法", "聚焦"] },
+  { no: 42, name: "風雷益", theme: "增益扶助", summary: "有外力或新資源進來，適合擴充、幫助與快速修正。", action: "把助力導入正途，立即回饋成果", caution: "忌貪多、分散與把好處視為理所當然", keywords: ["增益", "助力", "擴充"] },
+  { no: 43, name: "澤天夬", theme: "決去陰滯", summary: "該決斷的事已到臨界。要公開、正直、果斷，但不宜粗暴。", action: "宣布界線，處理拖延已久的問題", caution: "忌私下報復、過度強硬", keywords: ["決斷", "宣告", "清除"] },
+  { no: 44, name: "天風姤", theme: "偶遇慎始", summary: "突然而來的人事有吸引力，也有不穩定。初遇之時最要守界線。", action: "先觀察動機，不急著深度綁定", caution: "忌被新鮮感牽走或輕許承諾", keywords: ["相遇", "誘惑", "界線"] },
+  { no: 45, name: "澤地萃", theme: "聚眾成勢", summary: "人與資源正在聚合。要讓聚合有中心，否則熱鬧會散。", action: "建立共同儀式、規則與分配方式", caution: "忌只求人氣，不管品質與秩序", keywords: ["聚集", "中心", "資源"] },
+  { no: 46, name: "地風升", theme: "循序上升", summary: "上升之路可行，但要一步一步。柔順進取，能得長輩或制度扶持。", action: "按階段累積資歷，向上請益", caution: "忌跳級貪快與基礎未穩就求高位", keywords: ["升進", "累積", "扶持"] },
+  { no: 47, name: "澤水困", theme: "困中守志", summary: "外在受限，言語未必被聽見。守住內在價值，等待出口。", action: "節省力氣，處理可控制的核心", caution: "忌自暴自棄與用抱怨耗盡信任", keywords: ["困境", "守志", "節力"] },
+  { no: 48, name: "水風井", theme: "井養不竭", summary: "真正的資源在深處，宜修井、養人、建立長久可用的系統。", action: "修復基礎設施，讓資源穩定供給", caution: "忌只換外觀，不清井泥", keywords: ["滋養", "系統", "根源"] },
+  { no: 49, name: "澤火革", theme: "革故鼎新", summary: "舊制度已不合時宜，改革有其必要。成功靠時機、信任與明確宣告。", action: "先取得共識，再分階段改制", caution: "忌為反而反，或在時機未熟時硬改", keywords: ["改革", "更替", "時機"] },
+  { no: 50, name: "火風鼎", theme: "鼎新成器", summary: "資源可被烹煉成新格局。此卦利於成就作品、制度與名器。", action: "整合人才與資源，做出可傳承成果", caution: "忌材料雜亂、權責不明", keywords: ["成器", "整合", "傳承"] },
+  { no: 51, name: "震為雷", theme: "震動警醒", summary: "突發之事令人驚醒。先穩住心神，再把震動轉成行動訊號。", action: "快速確認安全與優先順序", caution: "忌驚慌失措或為求刺激反覆冒進", keywords: ["震動", "警醒", "啟動"] },
+  { no: 52, name: "艮為山", theme: "止定守界", summary: "該停就停，止於其所。定下來，才看得見下一步在哪裡。", action: "暫停擴張，整理界線與身心", caution: "忌固執不動，也忌明知該停仍硬走", keywords: ["止步", "安定", "界線"] },
+  { no: 53, name: "風山漸", theme: "漸進成禮", summary: "進展慢而有序，適合長期培養。越守禮節，越能走遠。", action: "按階段承諾，讓成果自然成熟", caution: "忌跳步、催熟與越界", keywords: ["漸進", "禮序", "成熟"] },
+  { no: 54, name: "雷澤歸妹", theme: "位不正而合", summary: "關係或安排有吸引力，但名分與位置不穩。先看是否正當。", action: "確認身份、承諾與後果", caution: "忌被一時熱情拉進不對等關係", keywords: ["名分", "不正", "慎合"] },
+  { no: 55, name: "雷火豐", theme: "豐盛當午", summary: "光與勢都在高點，適合把握當下。盛極易轉，故需明快收整。", action: "趁勢完成關鍵任務，留下紀錄", caution: "忌沉迷熱鬧、忽視高峰後的安排", keywords: ["高峰", "豐盛", "明快"] },
+  { no: 56, name: "火山旅", theme: "旅居守分", summary: "身在外地或不熟悉的場域，宜守分、簡明、少糾纏。", action: "輕裝前進，尊重當地規則", caution: "忌久戀客位、過度介入他人地盤", keywords: ["旅途", "暫居", "守分"] },
+  { no: 57, name: "巽為風", theme: "柔入滲透", summary: "柔和、持續、深入的力量勝過強攻。適合溝通、布局與細水長流。", action: "用小而穩的方式反覆滲透", caution: "忌優柔寡斷、沒有底線", keywords: ["入順", "溝通", "持續"] },
+  { no: 58, name: "兌為澤", theme: "悅納交流", summary: "喜悅、交流與互惠帶來開口。說得好聽，也要說得真誠。", action: "用愉悅氣氛促成合作與和解", caution: "忌甜言、放縱與只求表面開心", keywords: ["喜悅", "交流", "互惠"] },
+  { no: 59, name: "風水渙", theme: "渙散化結", summary: "僵硬開始散開，適合化解隔閡、疏通卡住的情緒與制度。", action: "打開溝通渠道，重新聚焦共同核心", caution: "忌散而無收，問題化開後要重立中心", keywords: ["疏散", "化解", "重聚"] },
+  { no: 60, name: "水澤節", theme: "節制立度", summary: "界線、制度與限額能保護長久。節不是限制生命，而是讓生命不耗竭。", action: "設定規則、預算、時間與可接受範圍", caution: "忌過度苛刻，也忌毫無節制", keywords: ["節制", "界線", "制度"] },
+  { no: 61, name: "風澤中孚", theme: "誠信感通", summary: "真誠能穿透隔閡。此卦重在心口一致，信任因此形成。", action: "用透明承諾換取長期信任", caution: "忌口惠而實不至、表忠心無行動", keywords: ["誠信", "感通", "信任"] },
+  { no: 62, name: "雷山小過", theme: "小過慎微", summary: "小事可過，大事不可逞。低飛、謹慎、照看細節，反而能避禍。", action: "把標準放在細節，不求大幅躍進", caution: "忌高調冒進與把小勝擴成大賭", keywords: ["小事", "謹慎", "低飛"] },
+  { no: 63, name: "水火既濟", theme: "既成防亂", summary: "事情已成或將成，最要防完成後失序。收尾比開局更重要。", action: "整理交接、驗收與後續維護", caution: "忌以為完成就不用管理", keywords: ["完成", "收尾", "防亂"] },
+  { no: 64, name: "火水未濟", theme: "未成待渡", summary: "尚未完成，火水未交。關鍵在最後一段路，需謹慎校準。", action: "補齊缺口，確認順序後再跨越", caution: "忌臨門一腳鬆懈或急著宣告成功", keywords: ["未成", "校準", "待渡"] }
+];
+
+const LINE_STAGES = [
+  { name: "初爻", place: "根基初動", advice: "先校準動機與第一步" },
+  { name: "二爻", place: "內位成形", advice: "把可行之事穩定做出來" },
+  { name: "三爻", place: "進退交界", advice: "看清風險，不在壓力中逞強" },
+  { name: "四爻", place: "近外應變", advice: "處理協調、授權與外部關係" },
+  { name: "五爻", place: "主位當中", advice: "用正當方式承擔決策" },
+  { name: "上爻", place: "事極將變", advice: "收束過度，準備轉換階段" }
+];
+
+const LINE_VALUE = {
+  6: { label: "老陰", nature: "陰極轉陽", moving: true },
+  7: { label: "少陽", nature: "陽定不變", moving: false },
+  8: { label: "少陰", nature: "陰定不變", moving: false },
+  9: { label: "老陽", nature: "陽極轉陰", moving: true }
+};
+
+const state = {
+  selectedDomain: "career",
+  libraryDomain: "career",
+  installPrompt: null,
+  lastReading: null
+};
+
+const $ = (selector) => document.querySelector(selector);
+
+const HEXAGRAM_BY_NO = Object.fromEntries(HEXAGRAMS.map((hex) => [hex.no, hex]));
+const HEX_DETAIL_BY_NO = {};
+
+for (const [pair, no] of Object.entries(HEX_PAIR_TO_NUMBER)) {
+  const [upper, lower] = pair.split("|");
+  HEX_DETAIL_BY_NO[no] = {
+    upper,
+    lower,
+    lines: [...lower, ...upper].map(Number)
+  };
+}
+
+function svgIcon(id) {
+  return `<svg viewBox="0 0 24 24" aria-hidden="true">${ICONS[id]}</svg>`;
+}
+
+function randomInt(min, max) {
+  const range = max - min + 1;
+  if (window.crypto?.getRandomValues) {
+    const values = new Uint32Array(1);
+    const limit = Math.floor(0xffffffff / range) * range;
+    let value;
+    do {
+      window.crypto.getRandomValues(values);
+      value = values[0];
+    } while (value >= limit);
+    return min + (value % range);
+  }
+  return Math.floor(Math.random() * range) + min;
+}
+
+function countByFour(stalks) {
+  if (stalks === 0) return 0;
+  return stalks % 4 || 4;
+}
+
+function yarrowChange(total) {
+  const right = randomInt(1, total - 1);
+  const left = total - right;
+  const rightAfterHold = right - 1;
+  const leftRemainder = countByFour(left);
+  const rightRemainder = countByFour(rightAfterHold);
+  const removed = 1 + leftRemainder + rightRemainder;
+  return {
+    start: total,
+    left,
+    right,
+    held: 1,
+    leftRemainder,
+    rightRemainder,
+    removed,
+    remain: total - removed
+  };
+}
+
+function castYarrowLine(position) {
+  let total = 49;
+  const changes = [];
+  for (let i = 0; i < 3; i += 1) {
+    const change = yarrowChange(total);
+    changes.push(change);
+    total = change.remain;
+  }
+  return {
+    position,
+    value: total / 4,
+    changes
+  };
+}
+
+function castReading(question, domainId) {
+  const castLines = Array.from({ length: 6 }, (_, index) => castYarrowLine(index + 1));
+  const primaryLines = castLines.map((line) => (line.value === 7 || line.value === 9 ? 1 : 0));
+  const changedLines = castLines.map((line, index) => {
+    if (line.value === 6) return 1;
+    if (line.value === 9) return 0;
+    return primaryLines[index];
+  });
+  const primaryNo = numberFromLines(primaryLines);
+  const changedNo = numberFromLines(changedLines);
+  const moving = castLines.filter((line) => LINE_VALUE[line.value].moving).map((line) => line.position);
+  return {
+    id: window.crypto?.randomUUID?.() || String(Date.now()),
+    createdAt: new Date().toISOString(),
+    question,
+    domainId,
+    castLines,
+    primaryLines,
+    changedLines,
+    primaryNo,
+    changedNo,
+    moving
+  };
+}
+
+function numberFromLines(lines) {
+  const lower = lines.slice(0, 3).join("");
+  const upper = lines.slice(3, 6).join("");
+  return HEX_PAIR_TO_NUMBER[`${upper}|${lower}`];
+}
+
+function trigramText(lines) {
+  const lower = lines.slice(0, 3).join("");
+  const upper = lines.slice(3, 6).join("");
+  const lowerTri = TRIGRAMS[lower];
+  const upperTri = TRIGRAMS[upper];
+  return {
+    upper,
+    lower,
+    label: `上卦 ${upperTri.name}${upperTri.image} · 下卦 ${lowerTri.name}${lowerTri.image}`,
+    pair: `${upperTri.image}${lowerTri.image}`
+  };
+}
+
+function domainById(id) {
+  return DOMAINS.find((domain) => domain.id === id) || DOMAINS[0];
+}
+
+function getDomainReading(hex, domainId) {
+  const domain = domainById(domainId);
+  return `以「${domain.scope}」看 ${hex.name}，卦意落在「${hex.theme}」。此問先抓 ${domain.lineFocus}，再用「${hex.keywords.join("、")}」判斷深淺；目前宜${hex.action}。`;
+}
+
+function getActionReading(hex, domainId) {
+  const domain = domainById(domainId);
+  const healthNote = domainId === "health" ? "若有明顯不適，仍以專業檢查為準；" : "";
+  return `${healthNote}${domain.action}；套入本卦，重點是${hex.action}。可先做一個小而明確的行動，再觀察回應。`;
+}
+
+function getCautionReading(hex, domainId) {
+  const domain = domainById(domainId);
+  return `${domain.caution}；本卦特別忌「${hex.caution}」。若局勢不回應，先縮小問題，不要把全部籌碼押上。`;
+}
+
+function getDomainSnippet(hex, domainId) {
+  const domain = domainById(domainId);
+  return `${domain.label}看「${hex.theme}」：先察 ${domain.lineFocus}，宜${hex.action}。`;
+}
+
+function makeHexagramMark(lines, moving = []) {
+  const movingSet = new Set(moving);
+  return lines
+    .map((isYang, index) => ({ isYang, position: index + 1 }))
+    .reverse()
+    .map(({ isYang, position }) => {
+      const classes = ["hex-line", isYang ? "yang" : "yin"];
+      if (movingSet.has(position)) classes.push("moving");
+      return `<span class="${classes.join(" ")}" title="第 ${position} 爻"></span>`;
+    })
+    .join("");
+}
+
+function renderDomains() {
+  const grid = $("#domainGrid");
+  grid.innerHTML = DOMAINS.map((domain) => {
+    const checked = domain.id === state.selectedDomain ? "true" : "false";
+    return `<button class="domain-choice" type="button" role="radio" aria-checked="${checked}" data-domain="${domain.id}">${svgIcon(domain.id)}<span>${domain.label}</span></button>`;
+  }).join("");
+
+  grid.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-domain]");
+    if (!button) return;
+    state.selectedDomain = button.dataset.domain;
+    grid.querySelectorAll("[data-domain]").forEach((item) => {
+      item.setAttribute("aria-checked", String(item === button));
+    });
+  });
+
+  const miniTabs = $("#libraryDomains");
+  miniTabs.innerHTML = DOMAINS.map((domain) => {
+    const pressed = domain.id === state.libraryDomain ? "true" : "false";
+    return `<button class="mini-tab" type="button" aria-pressed="${pressed}" data-library-domain="${domain.id}">${domain.label}</button>`;
+  }).join("");
+
+  miniTabs.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-library-domain]");
+    if (!button) return;
+    state.libraryDomain = button.dataset.libraryDomain;
+    miniTabs.querySelectorAll("[data-library-domain]").forEach((item) => {
+      item.setAttribute("aria-pressed", String(item === button));
+    });
+    renderLibrary();
+  });
+}
+
+function renderReading(reading) {
+  const domain = domainById(reading.domainId);
+  const hex = HEXAGRAM_BY_NO[reading.primaryNo];
+  const changed = HEXAGRAM_BY_NO[reading.changedNo];
+  const tri = trigramText(reading.primaryLines);
+  const result = $("#result");
+
+  $("#primaryMark").innerHTML = makeHexagramMark(reading.primaryLines, reading.moving);
+  $("#primaryNumber").textContent = `第 ${hex.no} 卦`;
+  $("#primaryName").textContent = hex.name;
+  $("#trigramPair").textContent = tri.label;
+  $("#readingMeta").textContent = `${domain.label} · ${formatDate(reading.createdAt)}`;
+  $("#readingTitle").textContent = `${hex.name}：${hex.theme}`;
+  $("#readingCore").textContent = hex.summary;
+  $("#readingTags").innerHTML = hex.keywords.map((word) => `<span class="tag">${word}</span>`).join("");
+  $("#domainReading").textContent = getDomainReading(hex, reading.domainId);
+  $("#actionReading").textContent = getActionReading(hex, reading.domainId);
+  $("#cautionReading").textContent = getCautionReading(hex, reading.domainId);
+  $("#movingLines").innerHTML = renderMovingLines(reading, hex, domain);
+  $("#changedWrap").innerHTML = renderChangedHexagram(reading, changed);
+  $("#processLog").innerHTML = renderProcess(reading);
+
+  result.hidden = false;
+  result.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+function renderMovingLines(reading, hex, domain) {
+  if (reading.moving.length === 0) {
+    return `<p>無動爻。此卦以本卦為主，先照「${hex.theme}」穩定處理，不急著轉向。</p>`;
+  }
+
+  const items = reading.castLines
+    .filter((line) => LINE_VALUE[line.value].moving)
+    .map((line) => {
+      const stage = LINE_STAGES[line.position - 1];
+      const value = LINE_VALUE[line.value];
+      const turn = line.value === 9 ? "由盛轉收" : "由伏轉發";
+      return `<div class="moving-item"><strong>${stage.name} · ${value.label}</strong><p>${value.nature}，此處是「${stage.place}」。在${domain.label}之問，先看${domain.lineFocus}；${turn}，宜${stage.advice}，並把「${hex.action}」做得更精準。</p></div>`;
+    })
+    .join("");
+
+  return `<div class="moving-list">${items}</div>`;
+}
+
+function renderChangedHexagram(reading, changed) {
+  const label = reading.moving.length === 0 ? "本卦不變" : `變為第 ${changed.no} 卦`;
+  return `
+    <div class="hexagram-mark">${makeHexagramMark(reading.changedLines)}</div>
+    <div>
+      <p class="eyebrow">${label}</p>
+      <h3>${changed.name}</h3>
+      <p>${changed.summary}</p>
+    </div>
+  `;
+}
+
+function renderProcess(reading) {
+  return reading.castLines
+    .map((line) => {
+      const value = LINE_VALUE[line.value];
+      const changes = line.changes
+        .map((change, index) => `第${index + 1}變：${change.start} 去 ${change.removed} 留 ${change.remain}`)
+        .join("；");
+      return `<div class="process-entry"><strong>第 ${line.position} 爻：${line.value} ${value.label}</strong><br>${changes}</div>`;
+    })
+    .join("");
+}
+
+function saveReading(reading) {
+  const history = getHistory();
+  const compact = {
+    id: reading.id,
+    createdAt: reading.createdAt,
+    question: reading.question,
+    domainId: reading.domainId,
+    primaryNo: reading.primaryNo,
+    changedNo: reading.changedNo,
+    moving: reading.moving
+  };
+  localStorage.setItem("iching-history", JSON.stringify([compact, ...history].slice(0, 8)));
+  renderHistory();
+}
+
+function getHistory() {
+  try {
+    return JSON.parse(localStorage.getItem("iching-history") || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function renderHistory() {
+  const list = $("#historyList");
+  const history = getHistory();
+  if (history.length === 0) {
+    list.innerHTML = '<div class="history-empty">尚無紀錄。</div>';
+    return;
+  }
+  list.innerHTML = history
+    .map((item) => {
+      const hex = HEXAGRAM_BY_NO[item.primaryNo];
+      const changed = HEXAGRAM_BY_NO[item.changedNo];
+      const domain = domainById(item.domainId);
+      const moving = item.moving.length ? `動爻 ${item.moving.join("、")}` : "無動爻";
+      const question = item.question ? escapeHtml(item.question) : "未填問題";
+      return `
+        <button class="history-item" type="button" data-open-hex="${hex.no}">
+          <span>
+            <strong>${domain.label} · ${hex.name}</strong>
+            <small>${question}</small>
+            <small>${formatDate(item.createdAt)} · ${moving} · ${changed.name}</small>
+          </span>
+          <span class="tag">第 ${hex.no} 卦</span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function renderLibrary() {
+  const grid = $("#hexLibrary");
+  const query = ($("#hexSearch").value || "").trim().toLowerCase();
+  const domainId = state.libraryDomain;
+  const filtered = HEXAGRAMS.filter((hex) => {
+    const haystack = `${hex.no} ${hex.name} ${hex.theme} ${hex.summary} ${hex.keywords.join(" ")}`.toLowerCase();
+    return !query || haystack.includes(query);
+  });
+
+  grid.innerHTML = filtered
+    .map((hex) => {
+      const detail = HEX_DETAIL_BY_NO[hex.no];
+      const tri = trigramText(detail.lines);
+      return `
+        <button class="hex-card" type="button" data-open-hex="${hex.no}">
+          <span class="hex-card-head"><span>第 ${hex.no} 卦</span><span>${TRIGRAMS[detail.upper].symbol}${TRIGRAMS[detail.lower].symbol}</span></span>
+          <h3>${hex.name}</h3>
+          <p>${hex.theme}</p>
+          <p>${getDomainSnippet(hex, domainId)}</p>
+          <span class="tag">${tri.label}</span>
+        </button>
+      `;
+    })
+    .join("");
+}
+
+function openHexDialog(no) {
+  const hex = HEXAGRAM_BY_NO[Number(no)];
+  if (!hex) return;
+  const detail = HEX_DETAIL_BY_NO[hex.no];
+  const tri = trigramText(detail.lines);
+  const domainCells = DOMAINS.map((domain) => {
+    return `<div class="dialog-cell"><strong>${domain.label}</strong><p>${getDomainSnippet(hex, domain.id)}</p></div>`;
+  }).join("");
+
+  $("#dialogBody").innerHTML = `
+    <div class="dialog-content">
+      <div class="hexagram-stage">
+        <div class="hexagram-mark">${makeHexagramMark(detail.lines)}</div>
+        <div class="hexagram-caption">
+          <span>第 ${hex.no} 卦</span>
+          <strong>${hex.name}</strong>
+          <small>${tri.label}</small>
+        </div>
+      </div>
+      <div>
+        <p class="eyebrow">${hex.keywords.join(" · ")}</p>
+        <h2>${hex.theme}</h2>
+        <p>${hex.summary}</p>
+      </div>
+      <div class="dialog-matrix">${domainCells}</div>
+      <div class="dialog-cell">
+        <strong>宜避</strong>
+        <p>${hex.caution}</p>
+      </div>
+    </div>
+  `;
+  $("#hexDialog").showModal();
+}
+
+function formatDate(iso) {
+  return new Intl.DateTimeFormat("zh-TW", {
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(new Date(iso));
+}
+
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, (char) => {
+    const entities = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#039;" };
+    return entities[char];
+  });
+}
+
+function setupInstall() {
+  const button = $("#installButton");
+  button.hidden = true;
+
+  window.addEventListener("beforeinstallprompt", (event) => {
+    event.preventDefault();
+    state.installPrompt = event;
+    button.hidden = false;
+  });
+
+  button.addEventListener("click", async () => {
+    if (!state.installPrompt) return;
+    state.installPrompt.prompt();
+    await state.installPrompt.userChoice;
+    state.installPrompt = null;
+    button.hidden = true;
+  });
+}
+
+function setupEvents() {
+  $("#oracleForm").addEventListener("submit", (event) => {
+    event.preventDefault();
+    const question = $("#question").value.trim();
+    const reading = castReading(question, state.selectedDomain);
+    state.lastReading = reading;
+    renderReading(reading);
+    saveReading(reading);
+  });
+
+  $("#clearButton").addEventListener("click", () => {
+    $("#question").value = "";
+    $("#question").focus();
+  });
+
+  $("#hexSearch").addEventListener("input", renderLibrary);
+
+  document.addEventListener("click", (event) => {
+    const button = event.target.closest("[data-open-hex]");
+    if (button) openHexDialog(button.dataset.openHex);
+  });
+
+  $("#dialogClose").addEventListener("click", () => $("#hexDialog").close());
+  $("#hexDialog").addEventListener("click", (event) => {
+    if (event.target.id === "hexDialog") $("#hexDialog").close();
+  });
+}
+
+async function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+  try {
+    await navigator.serviceWorker.register("./sw.js");
+  } catch (error) {
+    console.info("Service worker registration skipped.", error);
+  }
+}
+
+function init() {
+  renderDomains();
+  setupEvents();
+  setupInstall();
+  renderLibrary();
+  renderHistory();
+  registerServiceWorker();
+}
+
+init();
