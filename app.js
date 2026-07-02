@@ -1391,7 +1391,8 @@ function buildMemberApplicationText() {
     `目前方案：${planName}`,
     "申請方案：月費會員",
     `申請時間：${time}`,
-    "需求：開通每日更多 AI 解卦次數"
+    "需求：開通每日更多 AI 解卦次數",
+    "付款：請依 LINE 官方帳號提供的匯款資訊付款，並回傳後五碼"
   ].join("\n");
 }
 
