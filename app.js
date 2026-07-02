@@ -65,6 +65,21 @@ const DOMAINS = [
   }
 ];
 
+const DOMAIN_SHARE_CODES = {
+  love: "l",
+  career: "c",
+  wealth: "w",
+  health: "h",
+  study: "s",
+  people: "p",
+  home: "m",
+  decision: "d"
+};
+
+const DOMAIN_ID_BY_SHARE_CODE = Object.fromEntries(
+  Object.entries(DOMAIN_SHARE_CODES).map(([id, code]) => [code, id])
+);
+
 const ICONS = {
   love: '<path d="M20.8 4.6a5.4 5.4 0 0 0-7.7 0L12 5.7l-1.1-1.1a5.4 5.4 0 1 0-7.7 7.7L12 21l8.8-8.7a5.4 5.4 0 0 0 0-7.7Z"/>',
   career: '<path d="M10 6V5a2 2 0 0 1 2-2h0a2 2 0 0 1 2 2v1"/><path d="M4 7h16v12H4z"/><path d="M4 12h16"/><path d="M9 12v2h6v-2"/>',
@@ -252,7 +267,7 @@ const HEXAGRAM_BY_NO = Object.fromEntries(HEXAGRAMS.map((hex) => [hex.no, hex]))
 const HEX_DETAIL_BY_NO = {};
 
 for (const [pair, no] of Object.entries(HEX_PAIR_TO_NUMBER)) {
-  const [upper, lower] = pair.split("|");
+  const [lower, upper] = pair.split("|");
   HEX_DETAIL_BY_NO[no] = {
     upper,
     lower,
@@ -517,6 +532,12 @@ function appendCastingLog(title, value, detail) {
 function numberFromLines(lines) {
   const lower = lines.slice(0, 3).join("");
   const upper = lines.slice(3, 6).join("");
+  return HEX_PAIR_TO_NUMBER[`${lower}|${upper}`];
+}
+
+function legacyNumberFromLines(lines) {
+  const lower = lines.slice(0, 3).join("");
+  const upper = lines.slice(3, 6).join("");
   return HEX_PAIR_TO_NUMBER[`${upper}|${lower}`];
 }
 
@@ -677,31 +698,104 @@ function renderProcess(reading) {
     .join("");
 }
 
+function lineValuesFromReading(reading) {
+  if (Array.isArray(reading.castLines) && reading.castLines.length === 6) {
+    return reading.castLines.map((line) => Number(line.value)).join("");
+  }
+
+  if (Array.isArray(reading.primaryLines) && reading.primaryLines.length === 6) {
+    const movingSet = new Set(reading.moving || []);
+    return reading.primaryLines
+      .map((isYang, index) => {
+        if (movingSet.has(index + 1)) return isYang ? 9 : 6;
+        return isYang ? 7 : 8;
+      })
+      .join("");
+  }
+
+  const detail = HEX_DETAIL_BY_NO[reading.primaryNo];
+  if (!detail) return "";
+  const movingSet = new Set(reading.moving || []);
+  return detail.lines
+    .map((isYang, index) => {
+      if (movingSet.has(index + 1)) return isYang ? 9 : 6;
+      return isYang ? 7 : 8;
+    })
+    .join("");
+}
+
+function castLinesFromValues(values) {
+  const lineValues = String(values || "").split("").map(Number);
+  if (lineValues.length !== 6 || lineValues.some((value) => ![6, 7, 8, 9].includes(value))) {
+    throw new Error("Invalid shared line values");
+  }
+  return lineValues.map((value, index) => ({
+    position: index + 1,
+    value,
+    changes: []
+  }));
+}
+
+function normalizeHexNo(value) {
+  const no = Number(value);
+  return HEXAGRAM_BY_NO[no] ? no : null;
+}
+
+function encodeShareTime(iso) {
+  const time = Date.parse(iso);
+  return Number.isFinite(time) ? Math.floor(time / 60000).toString(36) : undefined;
+}
+
+function decodeShareTime(value) {
+  if (!value) return new Date().toISOString();
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}T/.test(value)) return value;
+  const minutes = parseInt(String(value), 36);
+  return Number.isFinite(minutes) ? new Date(minutes * 60000).toISOString() : new Date().toISOString();
+}
+
 function makeSharePayload(reading) {
   return {
-    v: 1,
+    v: 2,
     q: reading.question || "",
-    d: reading.domainId,
-    t: reading.createdAt,
-    l: reading.castLines.map((line) => ({
-      v: line.value,
-      c: line.changes.map((change) => [
-        change.start,
-        change.left,
-        change.right,
-        change.leftRemainder,
-        change.rightRemainder,
-        change.removed,
-        change.remain
-      ])
-    }))
+    d: DOMAIN_SHARE_CODES[reading.domainId] || reading.domainId,
+    t: encodeShareTime(reading.createdAt),
+    p: reading.primaryNo,
+    c: reading.changedNo,
+    y: lineValuesFromReading(reading)
   };
 }
 
 function readingFromSharePayload(payload) {
-  if (!payload || payload.v !== 1 || !Array.isArray(payload.l) || payload.l.length !== 6) {
+  if (!payload || ![1, 2].includes(payload.v)) {
     return null;
   }
+
+  if (payload.v === 2) {
+    const castLines = castLinesFromValues(payload.y);
+    const primaryLines = castLines.map((line) => (line.value === 7 || line.value === 9 ? 1 : 0));
+    const changedLines = castLines.map((line, index) => {
+      if (line.value === 6) return 1;
+      if (line.value === 9) return 0;
+      return primaryLines[index];
+    });
+    const moving = castLines.filter((line) => LINE_VALUE[line.value].moving).map((line) => line.position);
+    const domainId = DOMAIN_ID_BY_SHARE_CODE[payload.d] || (DOMAINS.some((domain) => domain.id === payload.d) ? payload.d : "decision");
+
+    return {
+      id: `shared-${Date.now()}`,
+      createdAt: decodeShareTime(payload.t),
+      question: typeof payload.q === "string" ? payload.q.slice(0, 180) : "",
+      domainId,
+      castLines,
+      primaryLines,
+      changedLines,
+      primaryNo: normalizeHexNo(payload.p) || numberFromLines(primaryLines),
+      changedNo: normalizeHexNo(payload.c) || numberFromLines(changedLines),
+      moving
+    };
+  }
+
+  if (!Array.isArray(payload.l) || payload.l.length !== 6) return null;
 
   const castLines = payload.l.map((line, index) => {
     const value = Number(line.v);
@@ -728,8 +822,8 @@ function readingFromSharePayload(payload) {
     if (line.value === 9) return 0;
     return primaryLines[index];
   });
-  const primaryNo = numberFromLines(primaryLines);
-  const changedNo = numberFromLines(changedLines);
+  const primaryNo = legacyNumberFromLines(primaryLines);
+  const changedNo = legacyNumberFromLines(changedLines);
   const moving = castLines.filter((line) => LINE_VALUE[line.value].moving).map((line) => line.position);
   const domainId = DOMAINS.some((domain) => domain.id === payload.d) ? payload.d : "decision";
 
@@ -878,8 +972,8 @@ async function createReadingImageBlob(reading) {
   const moving = reading.moving.length ? `動爻：${reading.moving.join("、")}` : "無動爻";
 
   const bg = ctx.createLinearGradient(0, 0, 0, height);
-  bg.addColorStop(0, "#092a24");
-  bg.addColorStop(0.5, "#061612");
+  bg.addColorStop(0, "#071f1b");
+  bg.addColorStop(0.5, "#04110f");
   bg.addColorStop(1, "#020807");
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, width, height);
@@ -896,7 +990,7 @@ async function createReadingImageBlob(reading) {
   ctx.restore();
 
   const glow = ctx.createRadialGradient(width / 2, 330, 20, width / 2, 330, 440);
-  glow.addColorStop(0, "rgba(232, 189, 98, 0.38)");
+  glow.addColorStop(0, "rgba(232, 189, 98, 0.3)");
   glow.addColorStop(1, "rgba(232, 189, 98, 0)");
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, width, 760);
@@ -923,48 +1017,77 @@ async function createReadingImageBlob(reading) {
     ctx.stroke();
   }
 
-  ctx.textAlign = "center";
-  ctx.fillStyle = "#fff7da";
-  ctx.strokeStyle = "rgba(0, 0, 0, 0.7)";
-  ctx.lineWidth = 6;
-  ctx.font = '900 74px "Noto Serif TC", "Microsoft JhengHei", serif';
-  ctx.strokeText(hex.name, width / 2, 380);
-  ctx.fillText(hex.name, width / 2, 380);
-  ctx.fillStyle = "#e8bd62";
-  ctx.font = '700 42px "Noto Serif TC", "Microsoft JhengHei", serif';
-  ctx.fillText(hex.theme, width / 2, 440);
-
-  drawHexagramCanvas(ctx, reading.primaryLines, reading.moving, 398, 500, 284, 24, 18);
-  ctx.fillStyle = "#cbbf9b";
-  ctx.font = '700 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  ctx.fillText(`第 ${hex.no} 卦 · ${domain.label} · ${moving}`, width / 2, 696);
-  ctx.fillText(`變卦：第 ${changed.no} 卦 ${changed.name}`, width / 2, 740);
-
-  roundRectPath(ctx, 88, 800, width - 176, 388, 28);
-  ctx.fillStyle = "rgba(3, 18, 16, 0.84)";
+  roundRectPath(ctx, 188, 316, width - 376, 164, 32);
+  ctx.fillStyle = "rgba(0, 8, 7, 0.7)";
   ctx.fill();
-  ctx.strokeStyle = "rgba(232, 189, 98, 0.48)";
+  ctx.strokeStyle = "rgba(232, 189, 98, 0.5)";
   ctx.lineWidth = 3;
   ctx.stroke();
 
-  ctx.textAlign = "left";
-  ctx.fillStyle = "#e8bd62";
-  ctx.font = '800 32px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  ctx.fillText("所問", 128, 858);
+  ctx.textAlign = "center";
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.95)";
+  ctx.shadowBlur = 18;
+  ctx.shadowOffsetY = 5;
   ctx.fillStyle = "#fff7da";
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
+  ctx.lineWidth = 8;
+  ctx.font = '900 74px "Noto Serif TC", "Microsoft JhengHei", serif';
+  ctx.strokeText(hex.name, width / 2, 380);
+  ctx.fillText(hex.name, width / 2, 380);
+  ctx.fillStyle = "#ffd978";
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.75)";
+  ctx.lineWidth = 5;
+  ctx.font = '700 42px "Noto Serif TC", "Microsoft JhengHei", serif';
+  ctx.strokeText(hex.theme, width / 2, 440);
+  ctx.fillText(hex.theme, width / 2, 440);
+  ctx.restore();
+
+  drawHexagramCanvas(ctx, reading.primaryLines, reading.moving, 398, 500, 284, 24, 18);
+
+  roundRectPath(ctx, 164, 650, width - 328, 116, 24);
+  ctx.fillStyle = "rgba(0, 8, 7, 0.68)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(232, 189, 98, 0.34)";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  ctx.fillStyle = "#f6e6b7";
+  ctx.font = '700 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText(`第 ${hex.no} 卦 · ${domain.label} · ${moving}`, width / 2, 696);
+  ctx.fillStyle = "#d9f4df";
+  ctx.fillText(`變卦：第 ${changed.no} 卦 ${changed.name}`, width / 2, 740);
+
+  ctx.save();
+  ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
+  ctx.shadowBlur = 26;
+  ctx.shadowOffsetY = 12;
+  roundRectPath(ctx, 82, 790, width - 164, 410, 30);
+  ctx.fillStyle = "rgba(1, 9, 8, 0.94)";
+  ctx.fill();
+  ctx.restore();
+  ctx.strokeStyle = "rgba(247, 218, 136, 0.76)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#ffd978";
+  ctx.font = '800 32px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText("所問", 128, 850);
+  ctx.fillStyle = "#ffffff";
   ctx.font = '700 34px "Noto Serif TC", "Microsoft JhengHei", serif';
   const question = reading.question || "未填問題";
-  let nextY = drawWrappedText(ctx, question, 128, 908, 824, 46, 2);
+  let nextY = drawWrappedText(ctx, question, 128, 900, 824, 46, 2);
 
-  ctx.fillStyle = "#e8bd62";
+  ctx.fillStyle = "#ffd978";
   ctx.font = '800 32px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
   ctx.fillText("解讀", 128, nextY + 34);
-  ctx.fillStyle = "#eadfbd";
-  ctx.font = '500 30px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillStyle = "#fff2ce";
+  ctx.font = '650 31px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
   nextY = drawWrappedText(ctx, hex.summary, 128, nextY + 82, 824, 42, 3);
 
-  ctx.fillStyle = "#69d8a8";
-  ctx.font = '700 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillStyle = "#84f0bd";
+  ctx.font = '800 29px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
   drawWrappedText(ctx, `宜行：${hex.action}`, 128, nextY + 28, 824, 38, 2);
 
   ctx.textAlign = "center";
@@ -995,10 +1118,39 @@ function getCurrentReading() {
   const result = $("#result");
   if (result.hidden) return null;
 
-  const history = loadHistory();
+  const history = getHistory();
   const reading = history.find((item) => item.id === result.dataset.readingId) || history[0] || null;
-  if (reading) state.lastReading = reading;
-  return reading;
+  if (reading) state.lastReading = inflateReading(reading);
+  return state.lastReading;
+}
+
+function inflateReading(reading) {
+  if (Array.isArray(reading.primaryLines) && Array.isArray(reading.changedLines) && Array.isArray(reading.castLines)) {
+    return reading;
+  }
+
+  const primaryDetail = HEX_DETAIL_BY_NO[reading.primaryNo];
+  const changedDetail = HEX_DETAIL_BY_NO[reading.changedNo] || primaryDetail;
+  if (!primaryDetail) return reading;
+
+  const movingSet = new Set(reading.moving || []);
+  const primaryLines = [...primaryDetail.lines];
+  const changedLines = changedDetail ? [...changedDetail.lines] : primaryLines.map((line, index) => {
+    if (!movingSet.has(index + 1)) return line;
+    return line ? 0 : 1;
+  });
+  const castLines = primaryLines.map((isYang, index) => ({
+    position: index + 1,
+    value: movingSet.has(index + 1) ? (isYang ? 9 : 6) : (isYang ? 7 : 8),
+    changes: []
+  }));
+
+  return {
+    ...reading,
+    castLines,
+    primaryLines,
+    changedLines
+  };
 }
 
 function getShareData(reading) {
