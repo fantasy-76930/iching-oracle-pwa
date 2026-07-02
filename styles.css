@@ -860,6 +860,13 @@ input::placeholder {
   outline: none;
 }
 
+.share-button:disabled {
+  cursor: progress;
+  opacity: 0.68;
+  transform: none;
+  filter: saturate(0.7);
+}
+
 .share-button:active {
   transform: translateY(1px);
 }

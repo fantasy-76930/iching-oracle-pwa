@@ -629,6 +629,7 @@ function renderReading(reading) {
   $("#processLog").innerHTML = renderProcess(reading);
   $("#shareStatus").textContent = "";
   state.lastReading = reading;
+  result.dataset.readingId = reading.id;
 
   result.hidden = false;
   result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -770,6 +771,236 @@ function getReadingShareUrl(reading) {
   return url.toString();
 }
 
+function loadCanvasImage(src) {
+  return new Promise((resolve) => {
+    const image = new Image();
+    image.onload = () => resolve(image);
+    image.onerror = () => resolve(null);
+    image.src = src;
+  });
+}
+
+function canvasToBlob(canvas) {
+  return new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.94));
+}
+
+function wrapCanvasText(ctx, text, maxWidth, maxLines = 4) {
+  const source = String(text || "");
+  const paragraphs = source.split("\n");
+  const lines = [];
+
+  for (const paragraph of paragraphs) {
+    let current = "";
+    for (const char of paragraph) {
+      const next = current + char;
+      if (ctx.measureText(next).width > maxWidth && current) {
+        lines.push(current);
+        current = char;
+        if (lines.length === maxLines) break;
+      } else {
+        current = next;
+      }
+    }
+    if (lines.length === maxLines) break;
+    if (current) lines.push(current);
+  }
+
+  if (lines.length > maxLines) lines.length = maxLines;
+  if (lines.length === maxLines && ctx.measureText(lines[lines.length - 1]).width > maxWidth) {
+    let last = lines[lines.length - 1];
+    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
+      last = last.slice(0, -1);
+    }
+    lines[lines.length - 1] = `${last}…`;
+  }
+  return lines;
+}
+
+function drawWrappedText(ctx, text, x, y, maxWidth, lineHeight, maxLines = 4) {
+  const lines = wrapCanvasText(ctx, text, maxWidth, maxLines);
+  lines.forEach((line, index) => {
+    ctx.fillText(line, x, y + index * lineHeight);
+  });
+  return y + lines.length * lineHeight;
+}
+
+function roundRectPath(ctx, x, y, width, height, radius) {
+  const r = Math.min(radius, width / 2, height / 2);
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + width, y, x + width, y + height, r);
+  ctx.arcTo(x + width, y + height, x, y + height, r);
+  ctx.arcTo(x, y + height, x, y, r);
+  ctx.arcTo(x, y, x + width, y, r);
+  ctx.closePath();
+}
+
+function drawHexagramCanvas(ctx, lines, moving, x, y, width, lineHeight, gap) {
+  const movingSet = new Set(moving);
+  const barGradient = ctx.createLinearGradient(x, y, x + width, y);
+  barGradient.addColorStop(0, "#d69d43");
+  barGradient.addColorStop(0.52, "#fff0b4");
+  barGradient.addColorStop(1, "#a76b2f");
+
+  [...lines].reverse().forEach((isYang, reverseIndex) => {
+    const position = 6 - reverseIndex;
+    const yy = y + reverseIndex * (lineHeight + gap);
+    ctx.fillStyle = barGradient;
+    if (isYang) {
+      roundRectPath(ctx, x, yy, width, lineHeight, 3);
+      ctx.fill();
+    } else {
+      const segmentWidth = (width - 28) / 2;
+      roundRectPath(ctx, x, yy, segmentWidth, lineHeight, 3);
+      ctx.fill();
+      roundRectPath(ctx, x + segmentWidth + 28, yy, segmentWidth, lineHeight, 3);
+      ctx.fill();
+    }
+    if (movingSet.has(position)) {
+      ctx.strokeStyle = "rgba(31, 176, 136, 0.95)";
+      ctx.lineWidth = 5;
+      roundRectPath(ctx, x - 8, yy - 8, width + 16, lineHeight + 16, 6);
+      ctx.stroke();
+    }
+  });
+}
+
+async function createReadingImageBlob(reading) {
+  const width = 1080;
+  const height = 1350;
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  const hex = HEXAGRAM_BY_NO[reading.primaryNo];
+  const changed = HEXAGRAM_BY_NO[reading.changedNo];
+  const domain = domainById(reading.domainId);
+  const moving = reading.moving.length ? `動爻：${reading.moving.join("、")}` : "無動爻";
+
+  const bg = ctx.createLinearGradient(0, 0, 0, height);
+  bg.addColorStop(0, "#092a24");
+  bg.addColorStop(0.5, "#061612");
+  bg.addColorStop(1, "#020807");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.globalAlpha = 0.18;
+  ctx.strokeStyle = "#e8bd62";
+  ctx.lineWidth = 3;
+  for (let r = 220; r <= 620; r += 76) {
+    ctx.beginPath();
+    ctx.arc(width / 2, 392, r, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  const glow = ctx.createRadialGradient(width / 2, 330, 20, width / 2, 330, 440);
+  glow.addColorStop(0, "rgba(232, 189, 98, 0.38)");
+  glow.addColorStop(1, "rgba(232, 189, 98, 0)");
+  ctx.fillStyle = glow;
+  ctx.fillRect(0, 0, width, 760);
+
+  ctx.strokeStyle = "rgba(232, 189, 98, 0.86)";
+  ctx.lineWidth = 6;
+  roundRectPath(ctx, 44, 44, width - 88, height - 88, 36);
+  ctx.stroke();
+  ctx.strokeStyle = "rgba(31, 176, 136, 0.55)";
+  ctx.lineWidth = 2;
+  roundRectPath(ctx, 68, 68, width - 136, height - 136, 28);
+  ctx.stroke();
+
+  const icon = await loadCanvasImage("./assets/icon-192.png");
+  if (icon) {
+    ctx.save();
+    roundRectPath(ctx, 438, 80, 204, 204, 42);
+    ctx.clip();
+    ctx.drawImage(icon, 438, 80, 204, 204);
+    ctx.restore();
+    ctx.strokeStyle = "rgba(247, 218, 136, 0.92)";
+    ctx.lineWidth = 4;
+    roundRectPath(ctx, 438, 80, 204, 204, 42);
+    ctx.stroke();
+  }
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#fff7da";
+  ctx.strokeStyle = "rgba(0, 0, 0, 0.7)";
+  ctx.lineWidth = 6;
+  ctx.font = '900 74px "Noto Serif TC", "Microsoft JhengHei", serif';
+  ctx.strokeText(hex.name, width / 2, 380);
+  ctx.fillText(hex.name, width / 2, 380);
+  ctx.fillStyle = "#e8bd62";
+  ctx.font = '700 42px "Noto Serif TC", "Microsoft JhengHei", serif';
+  ctx.fillText(hex.theme, width / 2, 440);
+
+  drawHexagramCanvas(ctx, reading.primaryLines, reading.moving, 398, 500, 284, 24, 18);
+  ctx.fillStyle = "#cbbf9b";
+  ctx.font = '700 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText(`第 ${hex.no} 卦 · ${domain.label} · ${moving}`, width / 2, 696);
+  ctx.fillText(`變卦：第 ${changed.no} 卦 ${changed.name}`, width / 2, 740);
+
+  roundRectPath(ctx, 88, 800, width - 176, 388, 28);
+  ctx.fillStyle = "rgba(3, 18, 16, 0.84)";
+  ctx.fill();
+  ctx.strokeStyle = "rgba(232, 189, 98, 0.48)";
+  ctx.lineWidth = 3;
+  ctx.stroke();
+
+  ctx.textAlign = "left";
+  ctx.fillStyle = "#e8bd62";
+  ctx.font = '800 32px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText("所問", 128, 858);
+  ctx.fillStyle = "#fff7da";
+  ctx.font = '700 34px "Noto Serif TC", "Microsoft JhengHei", serif';
+  const question = reading.question || "未填問題";
+  let nextY = drawWrappedText(ctx, question, 128, 908, 824, 46, 2);
+
+  ctx.fillStyle = "#e8bd62";
+  ctx.font = '800 32px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText("解讀", 128, nextY + 34);
+  ctx.fillStyle = "#eadfbd";
+  ctx.font = '500 30px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  nextY = drawWrappedText(ctx, hex.summary, 128, nextY + 82, 824, 42, 3);
+
+  ctx.fillStyle = "#69d8a8";
+  ctx.font = '700 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  drawWrappedText(ctx, `宜行：${hex.action}`, 128, nextY + 28, 824, 38, 2);
+
+  ctx.textAlign = "center";
+  ctx.fillStyle = "#e8bd62";
+  ctx.font = '800 34px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText("易策玄占 · 線上易經卜卦", width / 2, 1250);
+  ctx.fillStyle = "#cbbf9b";
+  ctx.font = '500 24px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText("fantasy-76930.github.io/iching-oracle-pwa", width / 2, 1288);
+
+  return canvasToBlob(canvas);
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function getCurrentReading() {
+  if (state.lastReading) return state.lastReading;
+
+  const result = $("#result");
+  if (result.hidden) return null;
+
+  const history = loadHistory();
+  const reading = history.find((item) => item.id === result.dataset.readingId) || history[0] || null;
+  if (reading) state.lastReading = reading;
+  return reading;
+}
+
 function getShareData(reading) {
   const domain = domainById(reading.domainId);
   const hex = HEXAGRAM_BY_NO[reading.primaryNo];
@@ -801,31 +1032,48 @@ async function copyText(text) {
 }
 
 async function shareCurrentReading() {
-  const reading = state.lastReading;
+  const reading = getCurrentReading();
   if (!reading) return;
   const status = $("#shareStatus");
+  const shareButton = $("#shareResultButton");
   const shareData = getShareData(reading);
+  status.textContent = "正在生成卦象圖片...";
+  shareButton.disabled = true;
 
   try {
-    if (navigator.share) {
-      await navigator.share(shareData);
-      status.textContent = "已開啟分享面板。";
+    const blob = await createReadingImageBlob(reading);
+    if (!blob) {
+      throw new Error("Unable to generate image");
+    }
+    const filename = `易策玄占-${HEXAGRAM_BY_NO[reading.primaryNo].name}.png`;
+    const file = new File([blob], filename, { type: "image/png" });
+    const fileShareData = {
+      title: shareData.title,
+      text: "我的易經卜卦結果",
+      files: [file]
+    };
+
+    if (navigator.canShare?.(fileShareData) && navigator.share) {
+      await navigator.share(fileShareData);
+      status.textContent = "已開啟圖片分享面板。";
     } else {
-      await copyText(shareData.url);
-      status.textContent = "分享連結已複製。";
+      downloadBlob(blob, filename);
+      status.textContent = "瀏覽器不支援直接分享圖片，已下載 PNG。";
     }
   } catch (error) {
     if (error?.name === "AbortError") {
       status.textContent = "已取消分享。";
       return;
     }
-    await copyText(shareData.url);
-    status.textContent = "分享連結已複製。";
+    console.warn("Unable to share image.", error);
+    status.textContent = "圖片生成失敗，請再試一次。";
+  } finally {
+    shareButton.disabled = false;
   }
 }
 
 async function copyCurrentReadingLink() {
-  const reading = state.lastReading;
+  const reading = getCurrentReading();
   if (!reading) return;
   await copyText(getReadingShareUrl(reading));
   $("#shareStatus").textContent = "連結已複製，朋友打開會看到同一卦。";
