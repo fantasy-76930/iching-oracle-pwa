@@ -1466,8 +1466,11 @@ function localAiReply(message, reading) {
 async function requestAiReply(payload) {
   const endpoint = getAiEndpoint();
   if (!endpoint) {
-    $("#aiStatus").textContent = "LLM 後端尚未連線，先用卦典摘要回覆。";
-    return localAiReply(payload.message, getCurrentReading());
+    $("#aiStatus").textContent = "AI 追問尚未開通，先用卦典摘要回覆。";
+    return {
+      reply: localAiReply(payload.message, getCurrentReading()),
+      usedRemoteAi: false
+    };
   }
 
   const controller = new AbortController();
@@ -1481,13 +1484,25 @@ async function requestAiReply(payload) {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
-      $("#aiStatus").textContent = data.error === "AI_BACKEND_NOT_CONFIGURED"
-        ? "LLM 後端尚未設定金鑰。"
-        : "AI 暫時沒有接通。";
-      return data.reply || localAiReply(payload.message, getCurrentReading());
+      const statusText = {
+        AI_BACKEND_NOT_CONFIGURED: "AI 追問尚未開通，先用卦典摘要回覆。",
+        AI_BILLING_NOT_READY: "OpenAI 帳務或額度尚未開通，先用卦典摘要回覆。",
+        AI_MODEL_ERROR: "AI 暫時沒有接通，先用卦典摘要回覆。",
+        DAILY_LIMIT_REACHED: "今日免費 AI 次數已用完。"
+      };
+      $("#aiStatus").textContent = statusText[data.error] || "AI 暫時沒有接通，先用卦典摘要回覆。";
+      return {
+        reply: data.error === "DAILY_LIMIT_REACHED"
+          ? data.reply || localAiReply(payload.message, getCurrentReading())
+          : localAiReply(payload.message, getCurrentReading()),
+        usedRemoteAi: false
+      };
     }
     $("#aiStatus").textContent = "";
-    return data.reply || localAiReply(payload.message, getCurrentReading());
+    return {
+      reply: data.reply || localAiReply(payload.message, getCurrentReading()),
+      usedRemoteAi: true
+    };
   } finally {
     clearTimeout(timeout);
   }
@@ -1512,12 +1527,11 @@ async function handleAiSubmit(event) {
   const conversation = state.aiMessages.slice(-8);
   addAiMessage("user", message);
   input.value = "";
-  consumeAiQuota();
   setAiBusy(true);
   $("#aiStatus").textContent = state.isCasting ? "籌策中，正在接收補充..." : "正在請 AI 參照此卦...";
 
   try {
-    const reply = await requestAiReply({
+    const result = await requestAiReply({
       phase: state.isCasting || !reading ? "casting" : "reading",
       message,
       reading: readingForAi(reading),
@@ -1528,7 +1542,8 @@ async function handleAiSubmit(event) {
         quotaDate: state.member?.quotaDate
       }
     });
-    addAiMessage("assistant", reply);
+    if (result.usedRemoteAi) consumeAiQuota();
+    addAiMessage("assistant", result.reply);
   } catch (error) {
     console.warn("Unable to request AI reading.", error);
     $("#aiStatus").textContent = "AI 暫時沒有接通，先用卦典摘要回覆。";

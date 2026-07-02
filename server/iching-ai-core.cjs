@@ -207,7 +207,7 @@ async function callModel(system, user) {
       status: 503,
       body: {
         error: "AI_BACKEND_NOT_CONFIGURED",
-        reply: "AI 後端尚未設定金鑰。卦象已完成時，我會依同一卦回應你的追問。"
+        reply: "AI 追問尚未開通，先用卦典摘要回覆。"
       }
     };
   }
@@ -230,11 +230,27 @@ async function callModel(system, user) {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
+    const errorInfo = data?.error || {};
+    console.error("OpenAI request failed", {
+      status: response.status,
+      type: errorInfo.type || null,
+      code: errorInfo.code || null
+    });
+
+    const isQuotaOrBilling = response.status === 429 || errorInfo.code === "insufficient_quota";
+    const reply = response.status === 401 || response.status === 403
+      ? "AI 金鑰無法使用，請確認 OpenAI API key 是否正確，且帳號有 API 權限。"
+      : isQuotaOrBilling
+        ? "AI 帳務或額度尚未開通，先用卦典摘要回覆。等 OpenAI 付款額度可用後，再重新啟用線上 AI。"
+        : response.status === 400
+          ? "AI 模型設定或請求格式被拒絕，請稍後再試。"
+          : "AI 模型端暫時沒有接通，請稍後再問一次。";
+
     return {
       status: response.status,
       body: {
-        error: "AI_MODEL_ERROR",
-        reply: "AI 暫時沒有接通，請稍後再問一次。"
+        error: isQuotaOrBilling ? "AI_BILLING_NOT_READY" : "AI_MODEL_ERROR",
+        reply
       }
     };
   }
