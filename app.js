@@ -618,6 +618,8 @@ function renderReading(reading) {
   $("#readingMeta").textContent = `${domain.label} · ${formatDate(reading.createdAt)}`;
   $("#readingTitle").textContent = `${hex.name}：${hex.theme}`;
   $("#readingCore").textContent = hex.summary;
+  $("#readingQuestion").hidden = !reading.question;
+  $("#readingQuestion").textContent = reading.question ? `所問：${reading.question}` : "";
   $("#readingTags").innerHTML = hex.keywords.map((word) => `<span class="tag">${word}</span>`).join("");
   $("#domainReading").textContent = getDomainReading(hex, reading.domainId);
   $("#actionReading").textContent = getActionReading(hex, reading.domainId);
@@ -625,6 +627,8 @@ function renderReading(reading) {
   $("#movingLines").innerHTML = renderMovingLines(reading, hex, domain);
   $("#changedWrap").innerHTML = renderChangedHexagram(reading, changed);
   $("#processLog").innerHTML = renderProcess(reading);
+  $("#shareStatus").textContent = "";
+  state.lastReading = reading;
 
   result.hidden = false;
   result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -670,6 +674,184 @@ function renderProcess(reading) {
       return `<div class="process-entry"><strong>第 ${line.position} 爻：${line.value} ${value.label}</strong><br>${changes}</div>`;
     })
     .join("");
+}
+
+function makeSharePayload(reading) {
+  return {
+    v: 1,
+    q: reading.question || "",
+    d: reading.domainId,
+    t: reading.createdAt,
+    l: reading.castLines.map((line) => ({
+      v: line.value,
+      c: line.changes.map((change) => [
+        change.start,
+        change.left,
+        change.right,
+        change.leftRemainder,
+        change.rightRemainder,
+        change.removed,
+        change.remain
+      ])
+    }))
+  };
+}
+
+function readingFromSharePayload(payload) {
+  if (!payload || payload.v !== 1 || !Array.isArray(payload.l) || payload.l.length !== 6) {
+    return null;
+  }
+
+  const castLines = payload.l.map((line, index) => {
+    const value = Number(line.v);
+    if (![6, 7, 8, 9].includes(value)) throw new Error("Invalid shared line value");
+    return {
+      position: index + 1,
+      value,
+      changes: (line.c || []).map((change) => ({
+        start: Number(change[0]),
+        left: Number(change[1]),
+        right: Number(change[2]),
+        held: 1,
+        leftRemainder: Number(change[3]),
+        rightRemainder: Number(change[4]),
+        removed: Number(change[5]),
+        remain: Number(change[6])
+      }))
+    };
+  });
+
+  const primaryLines = castLines.map((line) => (line.value === 7 || line.value === 9 ? 1 : 0));
+  const changedLines = castLines.map((line, index) => {
+    if (line.value === 6) return 1;
+    if (line.value === 9) return 0;
+    return primaryLines[index];
+  });
+  const primaryNo = numberFromLines(primaryLines);
+  const changedNo = numberFromLines(changedLines);
+  const moving = castLines.filter((line) => LINE_VALUE[line.value].moving).map((line) => line.position);
+  const domainId = DOMAINS.some((domain) => domain.id === payload.d) ? payload.d : "decision";
+
+  return {
+    id: `shared-${Date.now()}`,
+    createdAt: payload.t || new Date().toISOString(),
+    question: typeof payload.q === "string" ? payload.q.slice(0, 180) : "",
+    domainId,
+    castLines,
+    primaryLines,
+    changedLines,
+    primaryNo,
+    changedNo,
+    moving
+  };
+}
+
+function encodeSharePayload(payload) {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = "";
+  bytes.forEach((byte) => {
+    binary += String.fromCharCode(byte);
+  });
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/g, "");
+}
+
+function decodeSharePayload(encoded) {
+  const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (char) => char.charCodeAt(0));
+  return JSON.parse(new TextDecoder().decode(bytes));
+}
+
+function getReadingShareUrl(reading) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = `reading=${encodeSharePayload(makeSharePayload(reading))}`;
+  return url.toString();
+}
+
+function getShareData(reading) {
+  const domain = domainById(reading.domainId);
+  const hex = HEXAGRAM_BY_NO[reading.primaryNo];
+  const changed = HEXAGRAM_BY_NO[reading.changedNo];
+  const moving = reading.moving.length ? `動爻 ${reading.moving.join("、")}` : "無動爻";
+  const text = `我用易策玄占問「${domain.label}」，卜到「${hex.name}：${hex.theme}」，${moving}，變卦「${changed.name}」。`;
+  return {
+    title: `易策玄占｜${hex.name}`,
+    text,
+    url: getReadingShareUrl(reading)
+  };
+}
+
+async function copyText(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return;
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = text;
+  textarea.setAttribute("readonly", "");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  document.body.append(textarea);
+  textarea.select();
+  document.execCommand("copy");
+  textarea.remove();
+}
+
+async function shareCurrentReading() {
+  const reading = state.lastReading;
+  if (!reading) return;
+  const status = $("#shareStatus");
+  const shareData = getShareData(reading);
+
+  try {
+    if (navigator.share) {
+      await navigator.share(shareData);
+      status.textContent = "已開啟分享面板。";
+    } else {
+      await copyText(shareData.url);
+      status.textContent = "分享連結已複製。";
+    }
+  } catch (error) {
+    if (error?.name === "AbortError") {
+      status.textContent = "已取消分享。";
+      return;
+    }
+    await copyText(shareData.url);
+    status.textContent = "分享連結已複製。";
+  }
+}
+
+async function copyCurrentReadingLink() {
+  const reading = state.lastReading;
+  if (!reading) return;
+  await copyText(getReadingShareUrl(reading));
+  $("#shareStatus").textContent = "連結已複製，朋友打開會看到同一卦。";
+}
+
+function loadSharedReadingFromUrl() {
+  const match = window.location.hash.match(/(?:^#|&)reading=([^&]+)/);
+  if (!match) return;
+
+  try {
+    const reading = readingFromSharePayload(decodeSharePayload(match[1]));
+    if (!reading) return;
+    state.selectedDomain = reading.domainId;
+    state.libraryDomain = reading.domainId;
+    document.querySelectorAll("[data-domain]").forEach((item) => {
+      item.setAttribute("aria-checked", String(item.dataset.domain === reading.domainId));
+    });
+    document.querySelectorAll("[data-library-domain]").forEach((item) => {
+      item.setAttribute("aria-pressed", String(item.dataset.libraryDomain === reading.domainId));
+    });
+    renderLibrary();
+    renderReading(reading);
+    $("#shareStatus").textContent = "這是朋友分享給你的卦象結果。";
+  } catch (error) {
+    console.warn("Unable to load shared reading.", error);
+  }
 }
 
 function saveReading(reading) {
@@ -850,6 +1032,9 @@ function setupEvents() {
   });
 
   $("#hexSearch").addEventListener("input", renderLibrary);
+  $("#shareResultButton").addEventListener("click", shareCurrentReading);
+  $("#copyResultButton").addEventListener("click", copyCurrentReadingLink);
+  window.addEventListener("hashchange", loadSharedReadingFromUrl);
 
   document.addEventListener("click", (event) => {
     const button = event.target.closest("[data-open-hex]");
@@ -878,6 +1063,7 @@ function init() {
   renderLibrary();
   renderHistory();
   registerServiceWorker();
+  loadSharedReadingFromUrl();
 }
 
 init();

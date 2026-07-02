@@ -788,6 +788,15 @@ input::placeholder {
   color: #eadfbd;
 }
 
+.reading-question {
+  margin: 12px 0 0;
+  padding: 11px 13px;
+  border: 1px solid rgba(232, 189, 98, 0.16);
+  border-radius: var(--radius);
+  color: var(--muted);
+  background: rgba(0, 0, 0, 0.18);
+}
+
 .tag-row {
   display: flex;
   flex-wrap: wrap;
@@ -805,6 +814,68 @@ input::placeholder {
   color: #f2dfad;
   background: rgba(232, 189, 98, 0.08);
   font-size: 0.88rem;
+}
+
+.share-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.share-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 132px;
+  min-height: 44px;
+  padding: 0 15px;
+  border: 1px solid rgba(232, 189, 98, 0.34);
+  border-radius: var(--radius);
+  color: var(--paper);
+  font-weight: 900;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    rgba(5, 22, 19, 0.82);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 10px 22px rgba(0, 0, 0, 0.24);
+  transition: transform 150ms ease, filter 150ms ease, border-color 150ms ease;
+}
+
+.share-button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.share-button:hover,
+.share-button:focus-visible {
+  transform: translateY(-1px);
+  filter: brightness(1.08);
+  border-color: rgba(232, 189, 98, 0.66);
+  outline: none;
+}
+
+.share-button:active {
+  transform: translateY(1px);
+}
+
+.primary-share {
+  color: #fff8dc;
+  background:
+    linear-gradient(180deg, rgba(255, 237, 163, 0.2), rgba(255, 237, 163, 0)),
+    linear-gradient(180deg, #1c8a70, #0a3f36 58%, #082b26);
+}
+
+.share-status {
+  min-height: 1.5em;
+  margin: 9px 0 0;
+  color: var(--gold);
+  font-size: 0.92rem;
 }
 
 .reading-grid,
@@ -1186,6 +1257,15 @@ input::placeholder {
   }
 
   .button {
+    width: 100%;
+  }
+
+  .share-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .share-button {
     width: 100%;
   }
 

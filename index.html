@@ -148,7 +148,26 @@
             <p class="eyebrow" id="readingMeta"></p>
             <h2 id="readingTitle"></h2>
             <p id="readingCore"></p>
+            <p class="reading-question" id="readingQuestion" hidden></p>
             <div class="tag-row" id="readingTags"></div>
+            <div class="share-actions" aria-label="分享卦象結果">
+              <button class="share-button primary-share" id="shareResultButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M4 12v7a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-7" />
+                  <path d="M16 6 12 2 8 6" />
+                  <path d="M12 2v13" />
+                </svg>
+                <span>分享結果</span>
+              </button>
+              <button class="share-button" id="copyResultButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 8h10v12H8z" />
+                  <path d="M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+                </svg>
+                <span>複製連結</span>
+              </button>
+            </div>
+            <p class="share-status" id="shareStatus" role="status"></p>
           </div>
         </article>
 
