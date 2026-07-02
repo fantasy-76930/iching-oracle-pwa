@@ -1380,6 +1380,49 @@ function openMemberDialog() {
   $("#memberDialog").showModal();
 }
 
+function buildMemberApplicationText() {
+  if (!state.member) initMembership();
+  const planName = state.member.plan === "vip" ? "VIP 會員" : "免費會員";
+  const time = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
+
+  return [
+    "易策玄占會員申請",
+    `會員編號：${state.member.id}`,
+    `目前方案：${planName}`,
+    "申請方案：月費會員",
+    `申請時間：${time}`,
+    "需求：開通每日更多 AI 解卦次數"
+  ].join("\n");
+}
+
+async function copyMemberApplication(text) {
+  if (navigator.clipboard?.writeText) {
+    await navigator.clipboard.writeText(text);
+    return true;
+  }
+  return false;
+}
+
+async function handleMemberApply() {
+  const status = $("#memberApplyStatus");
+  const text = buildMemberApplicationText();
+  const contactUrl = String(window.ICHING_MEMBER_CONTACT_URL || "").trim();
+
+  try {
+    const copied = await copyMemberApplication(text);
+    if (contactUrl) {
+      window.open(contactUrl, "_blank", "noopener");
+      status.textContent = copied ? "已複製申請資料，並開啟聯絡頁。" : "已開啟聯絡頁，請把會員編號傳給站主。";
+      return;
+    }
+    status.textContent = copied
+      ? "已複製會員申請資料，請貼給站主確認開通。"
+      : `會員編號：${state.member.id}。請截圖或複製這組編號給站主。`;
+  } catch {
+    status.textContent = `會員編號：${state.member.id}。請截圖或複製這組編號給站主。`;
+  }
+}
+
 function renderAiMessages() {
   const panel = $("#aiMessages");
   if (!panel) return;
@@ -1760,6 +1803,7 @@ function setupEvents() {
   $("#hexSearch").addEventListener("input", renderLibrary);
   $("#aiForm").addEventListener("submit", handleAiSubmit);
   $("#memberButton").addEventListener("click", openMemberDialog);
+  $("#memberApplyButton").addEventListener("click", handleMemberApply);
   $("#shareResultButton").addEventListener("click", shareCurrentReading);
   $("#copyResultButton").addEventListener("click", copyCurrentReadingLink);
   window.addEventListener("hashchange", loadSharedReadingFromUrl);
