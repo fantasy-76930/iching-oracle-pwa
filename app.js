@@ -257,7 +257,9 @@ const state = {
   libraryDomain: "career",
   installPrompt: null,
   lastReading: null,
-  isCasting: false
+  isCasting: false,
+  aiMessages: [],
+  isAiBusy: false
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -651,6 +653,8 @@ function renderReading(reading) {
   $("#shareStatus").textContent = "";
   state.lastReading = reading;
   result.dataset.readingId = reading.id;
+  syncAiOpeningWithReading(reading);
+  updateAiMode();
 
   result.hidden = false;
   result.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -1231,6 +1235,210 @@ async function copyCurrentReadingLink() {
   $("#shareStatus").textContent = "連結已複製，朋友打開會看到同一卦。";
 }
 
+function getAiEndpoint() {
+  let storedEndpoint = "";
+  try {
+    storedEndpoint = localStorage.getItem("iching-ai-endpoint") || "";
+  } catch {
+    storedEndpoint = "";
+  }
+  const configured = String(window.ICHING_AI_ENDPOINT || storedEndpoint).trim();
+  if (configured) return configured;
+
+  const host = window.location.hostname;
+  if (host.endsWith("netlify.app")) return "/.netlify/functions/iching-ai";
+  if (host.endsWith("vercel.app")) return "/api/iching-ai";
+  return "";
+}
+
+function initAiAssistant() {
+  state.aiMessages = [
+    {
+      role: "assistant",
+      content: "先定其問，待六爻成形，再看本卦與變卦。"
+    }
+  ];
+  renderAiMessages();
+  updateAiMode();
+}
+
+function updateAiMode() {
+  const phase = $("#aiPhase");
+  const badge = $("#aiModeBadge");
+  if (!phase || !badge) return;
+
+  if (state.isCasting) {
+    phase.textContent = "AI 聽問";
+    badge.textContent = "籌策中";
+    return;
+  }
+
+  if (state.lastReading) {
+    const hex = HEXAGRAM_BY_NO[state.lastReading.primaryNo];
+    phase.textContent = "AI 解卦";
+    badge.textContent = hex ? `${hex.name}` : "同卦追問";
+    return;
+  }
+
+  phase.textContent = "AI 解卦";
+  badge.textContent = "待起卦";
+}
+
+function syncAiOpeningWithReading(reading) {
+  if (state.aiMessages.length !== 1 || state.aiMessages[0].role !== "assistant") return;
+  const hex = HEXAGRAM_BY_NO[reading.primaryNo];
+  if (!hex) return;
+  state.aiMessages[0].content = `此卦已成：${hex.name}。後續只依同一卦追問，不另起新卦。`;
+  renderAiMessages();
+}
+
+function renderAiMessages() {
+  const panel = $("#aiMessages");
+  if (!panel) return;
+  panel.innerHTML = state.aiMessages
+    .map((message) => {
+      const content = escapeHtml(message.content).replace(/\n/g, "<br>");
+      return `<div class="ai-message ${message.role}"><p>${content}</p></div>`;
+    })
+    .join("");
+  panel.scrollTop = panel.scrollHeight;
+}
+
+function addAiMessage(role, content) {
+  state.aiMessages.push({ role, content });
+  if (state.aiMessages.length > 16) state.aiMessages = state.aiMessages.slice(-16);
+  renderAiMessages();
+}
+
+function setAiBusy(isBusy) {
+  state.isAiBusy = isBusy;
+  const button = $("#aiSendButton");
+  const input = $("#aiQuestion");
+  if (button) button.disabled = isBusy;
+  if (input) input.disabled = isBusy;
+}
+
+function readingForAi(reading) {
+  if (!reading) return null;
+  const fullReading = inflateReading(reading);
+  const domain = domainById(fullReading.domainId);
+  const primary = HEXAGRAM_BY_NO[fullReading.primaryNo];
+  const changed = HEXAGRAM_BY_NO[fullReading.changedNo];
+  const movingLines = fullReading.castLines
+    .filter((line) => LINE_VALUE[line.value]?.moving)
+    .map((line) => `${LINE_STAGES[line.position - 1].name} ${LINE_VALUE[line.value].label}`);
+
+  return {
+    question: fullReading.question,
+    domain: {
+      label: domain.label,
+      scope: domain.scope,
+      lineFocus: domain.lineFocus
+    },
+    primary: {
+      no: primary.no,
+      name: primary.name,
+      theme: primary.theme,
+      summary: primary.summary,
+      action: primary.action,
+      caution: primary.caution,
+      keywords: primary.keywords
+    },
+    changed: {
+      no: changed.no,
+      name: changed.name,
+      theme: changed.theme,
+      summary: changed.summary
+    },
+    moving: movingLines,
+    lineValues: fullReading.castLines.map((line) => `${line.position}:${line.value}`),
+    trigram: trigramText(fullReading.primaryLines).label
+  };
+}
+
+function localAiReply(message, reading) {
+  if (state.isCasting || !reading) {
+    return "我先把這個補充收進來。六爻還在成形，等本卦、變卦與動爻出來後，再一起看這句話落在哪一爻。";
+  }
+
+  const fullReading = inflateReading(reading);
+  const hex = HEXAGRAM_BY_NO[fullReading.primaryNo];
+  const changed = HEXAGRAM_BY_NO[fullReading.changedNo];
+  const domain = domainById(fullReading.domainId);
+  const moving = fullReading.moving.length ? `動爻在第 ${fullReading.moving.join("、")} 爻` : "此卦無動爻";
+
+  return [
+    `這一問仍以「${hex.name}」為主，重點是「${hex.theme}」。`,
+    `你追問的「${message}」，先看${domain.lineFocus}；${moving}，所以不要急著換問題，要先把同一件事看深。`,
+    `變卦為「${changed.name}」，表示後續會往「${changed.theme}」的方向轉。`,
+    `可先做一件小事：${hex.action}。`
+  ].join("\n");
+}
+
+async function requestAiReply(payload) {
+  const endpoint = getAiEndpoint();
+  if (!endpoint) {
+    $("#aiStatus").textContent = "LLM 後端尚未連線，先用卦典摘要回覆。";
+    return localAiReply(payload.message, getCurrentReading());
+  }
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 22000);
+  try {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+      signal: controller.signal
+    });
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      $("#aiStatus").textContent = data.error === "AI_BACKEND_NOT_CONFIGURED"
+        ? "LLM 後端尚未設定金鑰。"
+        : "AI 暫時沒有接通。";
+      return data.reply || localAiReply(payload.message, getCurrentReading());
+    }
+    $("#aiStatus").textContent = "";
+    return data.reply || localAiReply(payload.message, getCurrentReading());
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function handleAiSubmit(event) {
+  event.preventDefault();
+  if (state.isAiBusy) return;
+
+  const input = $("#aiQuestion");
+  const message = input.value.trim();
+  if (!message) return;
+
+  const reading = getCurrentReading();
+  const conversation = state.aiMessages.slice(-8);
+  addAiMessage("user", message);
+  input.value = "";
+  setAiBusy(true);
+  $("#aiStatus").textContent = state.isCasting ? "籌策中，正在接收補充..." : "正在請 AI 參照此卦...";
+
+  try {
+    const reply = await requestAiReply({
+      phase: state.isCasting || !reading ? "casting" : "reading",
+      message,
+      reading: readingForAi(reading),
+      conversation
+    });
+    addAiMessage("assistant", reply);
+  } catch (error) {
+    console.warn("Unable to request AI reading.", error);
+    $("#aiStatus").textContent = "AI 暫時沒有接通，先用卦典摘要回覆。";
+    addAiMessage("assistant", localAiReply(message, reading));
+  } finally {
+    setAiBusy(false);
+    updateAiMode();
+    input.focus();
+  }
+}
+
 function loadSharedReadingFromUrl() {
   const match = window.location.hash.match(/(?:^#|&)reading=([^&]+)/);
   if (!match) return;
@@ -1411,6 +1619,7 @@ function setupEvents() {
     castButton.disabled = true;
     clearButton.disabled = true;
     castButton.querySelector("span").textContent = "籌策運行中";
+    updateAiMode();
 
     try {
       const reading = await castReadingAnimated(question, state.selectedDomain);
@@ -1423,6 +1632,7 @@ function setupEvents() {
       castButton.disabled = false;
       clearButton.disabled = false;
       castButton.querySelector("span").textContent = "籌策起卦";
+      updateAiMode();
     }
   });
 
@@ -1432,6 +1642,7 @@ function setupEvents() {
   });
 
   $("#hexSearch").addEventListener("input", renderLibrary);
+  $("#aiForm").addEventListener("submit", handleAiSubmit);
   $("#shareResultButton").addEventListener("click", shareCurrentReading);
   $("#copyResultButton").addEventListener("click", copyCurrentReadingLink);
   window.addEventListener("hashchange", loadSharedReadingFromUrl);
@@ -1460,6 +1671,7 @@ function init() {
   renderDomains();
   setupEvents();
   setupInstall();
+  initAiAssistant();
   renderLibrary();
   renderHistory();
   registerServiceWorker();

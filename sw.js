@@ -1,8 +1,9 @@
-const CACHE_NAME = "iching-oracle-v5";
+const CACHE_NAME = "iching-oracle-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
+  "./ai-config.js",
   "./app.js",
   "./manifest.webmanifest",
   "./assets/hero-bg.png",

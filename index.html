@@ -97,6 +97,28 @@
             </button>
           </div>
         </form>
+
+        <section class="ai-panel" id="aiPanel" aria-label="AI 追問解卦">
+          <div class="ai-panel-head">
+            <div>
+              <p class="eyebrow" id="aiPhase">AI 解卦</p>
+              <h2>追問此卦</h2>
+            </div>
+            <span class="ai-badge" id="aiModeBadge">待起卦</span>
+          </div>
+          <div class="ai-messages" id="aiMessages" role="log" aria-live="polite"></div>
+          <form class="ai-form" id="aiForm">
+            <label class="sr-only" for="aiQuestion">追問內容</label>
+            <textarea id="aiQuestion" rows="2" maxlength="220" placeholder="補充想追問的事"></textarea>
+            <button class="ai-send" id="aiSendButton" type="submit" aria-label="送出追問">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="m4 12 16-8-5 16-3-7-8-1Z" />
+                <path d="m12 13 8-9" />
+              </svg>
+            </button>
+          </form>
+          <p class="ai-status" id="aiStatus" role="status"></p>
+        </section>
       </section>
 
       <section class="casting-section" id="castingOverlay" hidden>
@@ -239,6 +261,7 @@
       <div id="dialogBody"></div>
     </dialog>
 
+    <script src="./ai-config.js" defer></script>
     <script src="./app.js" defer></script>
   </body>
 </html>
