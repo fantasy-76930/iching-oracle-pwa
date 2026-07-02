@@ -1,6 +1,7 @@
 const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_ITEMS = 8;
+const DEFAULT_FREE_DAILY_LIMIT = 3;
 
 function corsHeaders(origin) {
   const configured = process.env.ALLOWED_ORIGIN || process.env.AI_ALLOWED_ORIGIN || "*";
@@ -75,6 +76,63 @@ function normalizeConversation(conversation) {
     role: item.role === "assistant" ? "assistant" : "user",
     content: clampText(item.content, 260)
   })).filter((item) => item.content);
+}
+
+function modelConfigured() {
+  return Boolean(process.env.OPENAI_API_KEY || process.env.LLM_API_KEY);
+}
+
+function quotaStoreConfigured() {
+  return Boolean(process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN);
+}
+
+function taipeiDateKey() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: process.env.QUOTA_TIME_ZONE || "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+function quotaIdentity(payload, meta) {
+  const raw = payload?.member?.id || meta?.ip || "anonymous";
+  return String(raw).replace(/[^a-zA-Z0-9_.:-]/g, "").slice(0, 80) || "anonymous";
+}
+
+async function redisPipeline(commands) {
+  const response = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(commands)
+  });
+  if (!response.ok) throw new Error(`Quota store failed: ${response.status}`);
+  return response.json();
+}
+
+async function enforceDailyQuota(payload, meta) {
+  const plan = payload?.member?.plan || "free";
+  if (plan !== "free" || !quotaStoreConfigured()) {
+    return { allowed: true };
+  }
+
+  const limit = Number(process.env.FREE_DAILY_AI_LIMIT || DEFAULT_FREE_DAILY_LIMIT);
+  const key = `iching-ai:${taipeiDateKey()}:${quotaIdentity(payload, meta)}`;
+  const results = await redisPipeline([
+    ["INCR", key],
+    ["EXPIRE", key, 172800]
+  ]);
+  const used = Number(results?.[0]?.result || 0);
+
+  return {
+    allowed: used <= limit,
+    used,
+    remaining: Math.max(limit - used, 0),
+    limit
+  };
 }
 
 function buildPrompts(payload) {
@@ -190,7 +248,7 @@ async function callModel(system, user) {
   };
 }
 
-async function handleAiRequest(rawPayload) {
+async function handleAiRequest(rawPayload, meta = {}) {
   const payload = parsePayload(rawPayload);
   const { system, user, message } = buildPrompts(payload);
   if (!message) {
@@ -201,6 +259,19 @@ async function handleAiRequest(rawPayload) {
         reply: "請先輸入想追問的內容。"
       }
     };
+  }
+  if (modelConfigured()) {
+    const quota = await enforceDailyQuota(payload, meta);
+    if (!quota.allowed) {
+      return {
+        status: 429,
+        body: {
+          error: "DAILY_LIMIT_REACHED",
+          reply: "今日免費 AI 追問已用完。可以先看本卦、動爻與變卦，或等明天再繼續追問。",
+          quota
+        }
+      };
+    }
   }
   return callModel(system, user);
 }

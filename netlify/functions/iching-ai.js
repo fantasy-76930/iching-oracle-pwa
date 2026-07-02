@@ -20,7 +20,9 @@ exports.handler = async (event) => {
   }
 
   try {
-    const result = await handleAiRequest(event.body);
+    const result = await handleAiRequest(event.body, {
+      ip: event.headers["x-forwarded-for"] || event.headers["client-ip"] || event.headers["x-nf-client-connection-ip"]
+    });
     return {
       statusCode: result.status,
       headers,

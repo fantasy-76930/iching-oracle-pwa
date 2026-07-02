@@ -106,6 +106,13 @@
             </div>
             <span class="ai-badge" id="aiModeBadge">待起卦</span>
           </div>
+          <div class="member-strip" id="memberStrip">
+            <div>
+              <span id="memberPlanLabel">免費會員</span>
+              <strong id="aiQuotaText">今日剩餘 3 次</strong>
+            </div>
+            <button class="member-button" id="memberButton" type="button">會員方案</button>
+          </div>
           <div class="ai-messages" id="aiMessages" role="log" aria-live="polite"></div>
           <form class="ai-form" id="aiForm">
             <label class="sr-only" for="aiQuestion">追問內容</label>
@@ -259,6 +266,35 @@
         </svg>
       </button>
       <div id="dialogBody"></div>
+    </dialog>
+
+    <dialog class="hex-dialog member-dialog" id="memberDialog">
+      <button class="icon-button dialog-close" id="memberDialogClose" type="button" aria-label="關閉">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M18 6 6 18M6 6l12 12" />
+        </svg>
+      </button>
+      <div class="member-dialog-body">
+        <p class="eyebrow">會員方案</p>
+        <h2>AI 解卦次數</h2>
+        <div class="plan-grid">
+          <article class="plan-card active">
+            <span>Free</span>
+            <strong>免費會員</strong>
+            <p>每日 3 次 AI 追問</p>
+          </article>
+          <article class="plan-card">
+            <span>Points</span>
+            <strong>點數包</strong>
+            <p>小額購買追問次數</p>
+          </article>
+          <article class="plan-card">
+            <span>VIP</span>
+            <strong>月費會員</strong>
+            <p>每日更多 AI 解卦</p>
+          </article>
+        </div>
+      </div>
     </dialog>
 
     <script src="./ai-config.js" defer></script>

@@ -252,6 +252,9 @@ const LINE_VALUE = {
   9: { label: "老陽", nature: "陽極轉陰", moving: true }
 };
 
+const FREE_DAILY_AI_LIMIT = 3;
+const MEMBER_STORAGE_KEY = "iching-member";
+
 const state = {
   selectedDomain: "career",
   libraryDomain: "career",
@@ -259,7 +262,8 @@ const state = {
   lastReading: null,
   isCasting: false,
   aiMessages: [],
-  isAiBusy: false
+  isAiBusy: false,
+  member: null
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -1292,6 +1296,90 @@ function syncAiOpeningWithReading(reading) {
   renderAiMessages();
 }
 
+function taipeiDateKey() {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit"
+  }).format(new Date());
+}
+
+function makeMemberId() {
+  return window.crypto?.randomUUID?.() || `member-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function readStoredMember() {
+  try {
+    return JSON.parse(localStorage.getItem(MEMBER_STORAGE_KEY) || "{}");
+  } catch {
+    return {};
+  }
+}
+
+function saveMember() {
+  try {
+    localStorage.setItem(MEMBER_STORAGE_KEY, JSON.stringify(state.member));
+  } catch {
+    // Membership stays in memory when private browsers block storage.
+  }
+}
+
+function initMembership() {
+  const today = taipeiDateKey();
+  const stored = readStoredMember();
+  state.member = {
+    id: stored.id || makeMemberId(),
+    plan: stored.plan || "free",
+    quotaDate: stored.quotaDate === today ? stored.quotaDate : today,
+    usedToday: stored.quotaDate === today ? Number(stored.usedToday || 0) : 0
+  };
+  saveMember();
+  updateMemberUi();
+}
+
+function getDailyLimit() {
+  return state.member?.plan === "free" ? FREE_DAILY_AI_LIMIT : 30;
+}
+
+function remainingAiUses() {
+  if (!state.member) return FREE_DAILY_AI_LIMIT;
+  const today = taipeiDateKey();
+  if (state.member.quotaDate !== today) {
+    state.member.quotaDate = today;
+    state.member.usedToday = 0;
+    saveMember();
+  }
+  return Math.max(getDailyLimit() - Number(state.member.usedToday || 0), 0);
+}
+
+function updateMemberUi() {
+  const planLabel = $("#memberPlanLabel");
+  const quotaText = $("#aiQuotaText");
+  if (!planLabel || !quotaText) return;
+
+  const planName = state.member?.plan === "vip" ? "VIP 會員" : "免費會員";
+  const remaining = remainingAiUses();
+  planLabel.textContent = planName;
+  quotaText.textContent = `今日剩餘 ${remaining} 次`;
+}
+
+function canUseAiQuota() {
+  return remainingAiUses() > 0;
+}
+
+function consumeAiQuota() {
+  if (!state.member) initMembership();
+  if (state.member.plan !== "free") return;
+  state.member.usedToday = Number(state.member.usedToday || 0) + 1;
+  saveMember();
+  updateMemberUi();
+}
+
+function openMemberDialog() {
+  $("#memberDialog").showModal();
+}
+
 function renderAiMessages() {
   const panel = $("#aiMessages");
   if (!panel) return;
@@ -1413,10 +1501,18 @@ async function handleAiSubmit(event) {
   const message = input.value.trim();
   if (!message) return;
 
+  if (!canUseAiQuota()) {
+    $("#aiStatus").textContent = "今日免費 AI 次數已用完。";
+    addAiMessage("assistant", "今日免費 AI 追問已用完。可以先看本卦、動爻與變卦，或等明天再繼續追問。");
+    openMemberDialog();
+    return;
+  }
+
   const reading = getCurrentReading();
   const conversation = state.aiMessages.slice(-8);
   addAiMessage("user", message);
   input.value = "";
+  consumeAiQuota();
   setAiBusy(true);
   $("#aiStatus").textContent = state.isCasting ? "籌策中，正在接收補充..." : "正在請 AI 參照此卦...";
 
@@ -1425,7 +1521,12 @@ async function handleAiSubmit(event) {
       phase: state.isCasting || !reading ? "casting" : "reading",
       message,
       reading: readingForAi(reading),
-      conversation
+      conversation,
+      member: {
+        id: state.member?.id,
+        plan: state.member?.plan || "free",
+        quotaDate: state.member?.quotaDate
+      }
     });
     addAiMessage("assistant", reply);
   } catch (error) {
@@ -1643,6 +1744,7 @@ function setupEvents() {
 
   $("#hexSearch").addEventListener("input", renderLibrary);
   $("#aiForm").addEventListener("submit", handleAiSubmit);
+  $("#memberButton").addEventListener("click", openMemberDialog);
   $("#shareResultButton").addEventListener("click", shareCurrentReading);
   $("#copyResultButton").addEventListener("click", copyCurrentReadingLink);
   window.addEventListener("hashchange", loadSharedReadingFromUrl);
@@ -1653,8 +1755,12 @@ function setupEvents() {
   });
 
   $("#dialogClose").addEventListener("click", () => $("#hexDialog").close());
+  $("#memberDialogClose").addEventListener("click", () => $("#memberDialog").close());
   $("#hexDialog").addEventListener("click", (event) => {
     if (event.target.id === "hexDialog") $("#hexDialog").close();
+  });
+  $("#memberDialog").addEventListener("click", (event) => {
+    if (event.target.id === "memberDialog") $("#memberDialog").close();
   });
 }
 
@@ -1671,6 +1777,7 @@ function init() {
   renderDomains();
   setupEvents();
   setupInstall();
+  initMembership();
   initAiAssistant();
   renderLibrary();
   renderHistory();

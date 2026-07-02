@@ -15,7 +15,9 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const result = await handleAiRequest(req.body);
+    const result = await handleAiRequest(req.body, {
+      ip: req.headers["x-forwarded-for"] || req.headers["x-real-ip"] || req.socket?.remoteAddress
+    });
     res.status(result.status).json(result.body);
   } catch (error) {
     console.error("AI handler failed", error);
