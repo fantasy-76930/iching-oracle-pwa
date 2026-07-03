@@ -2,6 +2,7 @@ const DEFAULT_MODEL = "gpt-4.1-mini";
 const MAX_MESSAGE_LENGTH = 500;
 const MAX_HISTORY_ITEMS = 8;
 const DEFAULT_FREE_DAILY_LIMIT = 3;
+const DEFAULT_VIP_DAILY_LIMIT = 30;
 
 function corsHeaders(origin) {
   const configured = process.env.ALLOWED_ORIGIN || process.env.AI_ALLOWED_ORIGIN || "*";
@@ -129,24 +130,24 @@ async function getOnlineMember(memberId) {
   }
 }
 
+async function saveOnlineMember(member) {
+  if (!member?.id || !quotaStoreConfigured()) return;
+  await redisPipeline([["SET", `member:${member.id}`, JSON.stringify(member)]]);
+}
+
 function isActiveOnlineVip(member) {
   if (!member || member.status !== "active") return false;
   if (member.plan !== "vip") return false;
   return !member.activeUntil || member.activeUntil >= taipeiDateKey();
 }
 
-async function enforceDailyQuota(payload, meta) {
-  if (!quotaStoreConfigured()) {
-    return { allowed: true };
-  }
+function pointBalance(member) {
+  const balance = Number(member?.pointsBalance || 0);
+  return Number.isFinite(balance) && balance > 0 ? Math.floor(balance) : 0;
+}
 
-  const onlineMember = await getOnlineMember(payload?.member?.id);
-  if (isActiveOnlineVip(onlineMember)) {
-    return { allowed: true };
-  }
-
-  const limit = Number(process.env.FREE_DAILY_AI_LIMIT || DEFAULT_FREE_DAILY_LIMIT);
-  const key = `iching-ai:${taipeiDateKey()}:${quotaIdentity(payload, meta)}`;
+async function enforceCounterLimit(identity, limit, prefix) {
+  const key = `${prefix}:${taipeiDateKey()}:${identity}`;
   const results = await redisPipeline([
     ["INCR", key],
     ["EXPIRE", key, 172800]
@@ -159,6 +160,43 @@ async function enforceDailyQuota(payload, meta) {
     remaining: Math.max(limit - used, 0),
     limit
   };
+}
+
+async function enforceDailyQuota(payload, meta) {
+  if (!quotaStoreConfigured()) {
+    return { allowed: true };
+  }
+
+  const identity = quotaIdentity(payload, meta);
+  const onlineMember = await getOnlineMember(payload?.member?.id);
+  if (isActiveOnlineVip(onlineMember)) {
+    return enforceCounterLimit(identity, Number(process.env.VIP_DAILY_AI_LIMIT || DEFAULT_VIP_DAILY_LIMIT), "iching-ai-vip");
+  }
+
+  const limit = Number(process.env.FREE_DAILY_AI_LIMIT || DEFAULT_FREE_DAILY_LIMIT);
+  const quota = await enforceCounterLimit(identity, limit, "iching-ai");
+  if (quota.allowed) {
+    return {
+      ...quota,
+      pointsBalance: pointBalance(onlineMember)
+    };
+  }
+
+  const points = pointBalance(onlineMember);
+  if (points > 0) {
+    onlineMember.pointsBalance = points - 1;
+    onlineMember.lastPointUsedAt = new Date().toISOString();
+    await saveOnlineMember(onlineMember);
+    return {
+      ...quota,
+      allowed: true,
+      remaining: 0,
+      usedPoint: true,
+      pointsBalance: onlineMember.pointsBalance
+    };
+  }
+
+  return quota;
 }
 
 function buildPrompts(payload) {
@@ -315,6 +353,11 @@ async function handleAiRequest(rawPayload, meta = {}) {
         }
       };
     }
+    const modelResult = await callModel(system, user);
+    if (modelResult.body && modelResult.status === 200) {
+      modelResult.body.quota = quota;
+    }
+    return modelResult;
   }
   return callModel(system, user);
 }

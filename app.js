@@ -1652,6 +1652,8 @@ function initMembership() {
   state.member = {
     id: stored.id || makeMemberId(),
     plan: stored.plan || "free",
+    vipUntil: stored.vipUntil || "",
+    pointsBalance: Math.max(Number(stored.pointsBalance || 0), 0),
     quotaDate: stored.quotaDate === today ? stored.quotaDate : today,
     usedToday: stored.quotaDate === today ? Number(stored.usedToday || 0) : 0
   };
@@ -1674,6 +1676,10 @@ function remainingAiUses() {
   return Math.max(getDailyLimit() - Number(state.member.usedToday || 0), 0);
 }
 
+function currentPointBalance() {
+  return Math.max(Number(state.member?.pointsBalance || 0), 0);
+}
+
 function updateMemberUi() {
   const planLabel = $("#memberPlanLabel");
   const quotaText = $("#aiQuotaText");
@@ -1681,12 +1687,16 @@ function updateMemberUi() {
 
   const planName = state.member?.plan === "vip" ? "VIP 會員" : "免費會員";
   const remaining = remainingAiUses();
+  const points = currentPointBalance();
   planLabel.textContent = planName;
-  quotaText.textContent = `今日剩餘 ${remaining} 次`;
+  quotaText.textContent = points > 0
+    ? `今日剩餘 ${remaining} 次 · 點數 ${points} 次`
+    : `今日剩餘 ${remaining} 次`;
 }
 
 function canUseAiQuota() {
-  return remainingAiUses() > 0;
+  if (getAiEndpoint()) return true;
+  return remainingAiUses() > 0 || currentPointBalance() > 0;
 }
 
 function consumeAiQuota() {
@@ -1700,6 +1710,18 @@ function consumeAiQuota() {
 function openMemberDialog() {
   prepareMemberCheckoutForm();
   $("#memberDialog").showModal();
+}
+
+function applyRemoteQuota(quota) {
+  if (!state.member || !quota) return;
+  if (Number.isFinite(Number(quota.used)) && state.member.plan !== "vip") {
+    state.member.usedToday = Math.min(Number(quota.used), FREE_DAILY_AI_LIMIT);
+  }
+  if (Number.isFinite(Number(quota.pointsBalance))) {
+    state.member.pointsBalance = Math.max(Number(quota.pointsBalance), 0);
+  }
+  saveMember();
+  updateMemberUi();
 }
 
 function buildMemberApplicationText() {
@@ -1741,13 +1763,16 @@ async function handleMemberCheckoutSubmit(event) {
   prepareMemberCheckoutForm();
   const form = event.currentTarget;
   const status = $("#memberApplyStatus");
+  const product = event.submitter?.value === "points" ? "points" : "vip";
   if (!form.action) {
     event.preventDefault();
     status.textContent = "線上付款尚未設定，請先用 LINE 聯絡站主。";
     await handleMemberLineContact();
     return;
   }
-  status.textContent = "正在建立會員資料，準備前往付款頁...";
+  status.textContent = product === "points"
+    ? "正在建立點數包訂單，準備前往付款頁..."
+    : "正在建立月費會員訂單，準備前往付款頁...";
 }
 
 async function handleMemberLineContact() {
@@ -1786,6 +1811,9 @@ async function refreshOnlineMemberStatus() {
     } else if (state.member.plan === "vip" && data.status !== "active") {
       state.member.plan = "free";
       state.member.vipUntil = "";
+    }
+    if (Number.isFinite(Number(data.pointsBalance))) {
+      state.member.pointsBalance = Math.max(Number(data.pointsBalance), 0);
     }
     saveMember();
     updateMemberUi();
@@ -1909,13 +1937,16 @@ async function requestAiReply(payload) {
         reply: data.error === "DAILY_LIMIT_REACHED"
           ? data.reply || localAiReply(payload.message, getCurrentReading())
           : localAiReply(payload.message, getCurrentReading()),
-        usedRemoteAi: false
+        usedRemoteAi: false,
+        limitReached: data.error === "DAILY_LIMIT_REACHED",
+        quota: data.quota
       };
     }
     $("#aiStatus").textContent = "";
     return {
       reply: data.reply || localAiReply(payload.message, getCurrentReading()),
-      usedRemoteAi: true
+      usedRemoteAi: true,
+      quota: data.quota
     };
   } finally {
     clearTimeout(timeout);
@@ -1956,7 +1987,12 @@ async function handleAiSubmit(event) {
         quotaDate: state.member?.quotaDate
       }
     });
-    if (result.usedRemoteAi) consumeAiQuota();
+    if (result.quota) {
+      applyRemoteQuota(result.quota);
+    } else if (result.usedRemoteAi) {
+      consumeAiQuota();
+    }
+    if (result.limitReached) openMemberDialog();
     addAiMessage("assistant", result.reply);
   } catch (error) {
     console.warn("Unable to request AI reading.", error);

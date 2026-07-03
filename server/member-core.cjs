@@ -5,6 +5,9 @@ const ECPAY_ACTIONS = {
   stage: "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"
 };
 
+const DEFAULT_POINTS_PACK_AMOUNT = 99;
+const DEFAULT_POINTS_PACK_CREDITS = 50;
+
 function jsonHeaders(origin = "*") {
   return {
     "Access-Control-Allow-Origin": origin || "*",
@@ -112,8 +115,7 @@ function ecpayConfigured() {
   return Boolean(
     process.env.ECPAY_MERCHANT_ID &&
     process.env.ECPAY_HASH_KEY &&
-    process.env.ECPAY_HASH_IV &&
-    process.env.MEMBERSHIP_MONTHLY_AMOUNT
+    process.env.ECPAY_HASH_IV
   );
 }
 
@@ -159,6 +161,39 @@ function readEcpayPaymentState(payload) {
     paid: !simulated && rtnCode === "1",
     simulated,
     rtnCode
+  };
+}
+
+function positiveInteger(value, fallback) {
+  const number = Number(value);
+  return Number.isInteger(number) && number > 0 ? number : fallback;
+}
+
+function checkoutProduct(payload) {
+  const product = cleanText(payload.product || payload.productType || payload.plan, 20).toLowerCase();
+  return product === "points" ? "points" : "vip";
+}
+
+function checkoutProductConfig(product) {
+  if (product === "points") {
+    const amount = positiveInteger(process.env.POINTS_PACK_AMOUNT, DEFAULT_POINTS_PACK_AMOUNT);
+    const points = positiveInteger(process.env.POINTS_PACK_CREDITS, DEFAULT_POINTS_PACK_CREDITS);
+    return {
+      type: "points",
+      amount,
+      points,
+      tradeDesc: "易策玄占AI點數包",
+      itemName: `易策玄占 AI 點數包 ${points} 次`
+    };
+  }
+
+  const amount = positiveInteger(process.env.MEMBERSHIP_MONTHLY_AMOUNT, 0);
+  return {
+    type: "vip",
+    amount,
+    points: 0,
+    tradeDesc: "易策玄占月費會員",
+    itemName: `易策玄占月費會員 ${amount} 元/月`
   };
 }
 
@@ -215,8 +250,14 @@ async function handleMemberCheckout(rawPayload) {
   if (!ecpayConfigured()) {
     return {
       status: 503,
-      html: checkoutUnavailablePage("綠界金流尚未設定完成。請站主先設定商店代號、HashKey、HashIV 與月費金額。")
+      html: checkoutUnavailablePage("綠界金流尚未設定完成。請站主先設定商店代號、HashKey 與 HashIV。")
     };
+  }
+
+  const product = checkoutProduct(payload);
+  const productConfig = checkoutProductConfig(product);
+  if (!Number.isInteger(productConfig.amount) || productConfig.amount <= 0) {
+    return { status: 503, html: checkoutUnavailablePage("付款金額尚未正確設定。") };
   }
 
   const memberId = cleanMemberId(payload.memberId);
@@ -224,11 +265,6 @@ async function handleMemberCheckout(rawPayload) {
   const lineName = cleanText(payload.lineName, 80);
   if (!email || !email.includes("@")) {
     return { status: 400, html: checkoutUnavailablePage("請回上一頁填寫有效 Email。") };
-  }
-
-  const amount = Number(process.env.MEMBERSHIP_MONTHLY_AMOUNT);
-  if (!Number.isInteger(amount) || amount <= 0) {
-    return { status: 503, html: checkoutUnavailablePage("月費金額尚未正確設定。") };
   }
 
   const tradeNo = merchantTradeNo();
@@ -241,7 +277,17 @@ async function handleMemberCheckout(rawPayload) {
     lineName,
     plan: existing?.plan || "free",
     status: existing?.status || "pending_payment",
+    pointsBalance: positiveInteger(existing?.pointsBalance, 0),
     latestTradeNo: tradeNo,
+    pendingOrders: {
+      ...(existing?.pendingOrders || {}),
+      [tradeNo]: {
+        type: productConfig.type,
+        amount: productConfig.amount,
+        points: productConfig.points,
+        createdAt: now
+      }
+    },
     updatedAt: now,
     createdAt: existing?.createdAt || now
   };
@@ -254,9 +300,9 @@ async function handleMemberCheckout(rawPayload) {
     MerchantTradeNo: tradeNo,
     MerchantTradeDate: taipeiTradeDate(),
     PaymentType: "aio",
-    TotalAmount: amount,
-    TradeDesc: "易策玄占月費會員",
-    ItemName: `易策玄占月費會員 ${amount} 元/月`,
+    TotalAmount: productConfig.amount,
+    TradeDesc: productConfig.tradeDesc,
+    ItemName: productConfig.itemName,
     ReturnURL: `${base}/api/ecpay-return`,
     ChoosePayment: "Credit",
     ClientBackURL: `${appBaseUrl()}?member_checkout=back`,
@@ -265,12 +311,16 @@ async function handleMemberCheckout(rawPayload) {
     EncryptType: 1,
     CustomField1: memberId,
     CustomField2: email.slice(0, 100),
-    PeriodAmount: amount,
-    PeriodType: "M",
-    Frequency: 1,
-    ExecTimes: Number.isInteger(execTimes) && execTimes > 0 ? execTimes : 12,
-    PeriodReturnURL: `${base}/api/ecpay-return`
+    CustomField3: productConfig.type,
+    CustomField4: productConfig.points ? String(productConfig.points) : ""
   };
+  if (productConfig.type === "vip") {
+    params.PeriodAmount = productConfig.amount;
+    params.PeriodType = "M";
+    params.Frequency = 1;
+    params.ExecTimes = Number.isInteger(execTimes) && execTimes > 0 ? execTimes : 12;
+    params.PeriodReturnURL = `${base}/api/ecpay-return`;
+  }
   params.CheckMacValue = checkMacValue(params);
 
   const env = process.env.ECPAY_ENV === "production" ? "production" : "stage";
@@ -291,29 +341,50 @@ async function activateMemberFromPayment(payload) {
   const member = await getMember(memberId);
   if (!member) return { ok: false, message: "Member not found" };
 
+  const pendingOrder = member.pendingOrders?.[tradeNo] || {
+    type: cleanText(payload.CustomField3, 20) === "points" ? "points" : "vip",
+    amount: Number(payload.TradeAmt || process.env.MEMBERSHIP_MONTHLY_AMOUNT || 0),
+    points: Number(payload.CustomField4 || 0)
+  };
   const paymentState = readEcpayPaymentState(payload);
   const paid = paymentState.paid;
   const now = new Date().toISOString();
   if (paid) {
-    member.plan = "vip";
-    member.status = "active";
-    member.activeUntil = taipeiDate(35);
-    member.lastPaymentAt = now;
-    member.lastPayment = {
-      tradeNo,
-      amount: Number(payload.TradeAmt || payload.amount || process.env.MEMBERSHIP_MONTHLY_AMOUNT || 0),
-      rtnCode: payload.RtnCode || null,
-      paymentDate: payload.PaymentDate || null
-    };
+    if (pendingOrder.type === "points") {
+      const points = positiveInteger(pendingOrder.points || payload.CustomField4, DEFAULT_POINTS_PACK_CREDITS);
+      member.pointsBalance = positiveInteger(member.pointsBalance, 0) + points;
+      member.lastPointsPurchase = {
+        tradeNo,
+        points,
+        amount: Number(payload.TradeAmt || pendingOrder.amount || DEFAULT_POINTS_PACK_AMOUNT),
+        paidAt: now
+      };
+      if (member.plan !== "vip") member.status = "points_active";
+    } else {
+      member.plan = "vip";
+      member.status = "active";
+      member.activeUntil = taipeiDate(35);
+      member.lastPaymentAt = now;
+      member.lastPayment = {
+        tradeNo,
+        amount: Number(payload.TradeAmt || payload.amount || process.env.MEMBERSHIP_MONTHLY_AMOUNT || 0),
+        rtnCode: payload.RtnCode || null,
+        paymentDate: payload.PaymentDate || null
+      };
+    }
   } else {
-    member.status = paymentState.simulated ? "payment_simulated" : "payment_failed";
+    if (member.status !== "active") {
+      member.status = paymentState.simulated ? "payment_simulated" : "payment_failed";
+    }
     member.lastPaymentError = paymentState.simulated
       ? "ECPay simulated payment; member was not activated."
       : payload.RtnMsg || "Payment failed";
   }
+  if (member.pendingOrders) delete member.pendingOrders[tradeNo];
   member.updatedAt = now;
   await saveMember(member);
-  await notifyLineOwner(`${paid ? "會員付款成功" : "會員付款未完成"}\n會員：${member.email}\n會員編號：${member.id}\n交易：${tradeNo}`);
+  const productName = pendingOrder.type === "points" ? "點數包" : "月費會員";
+  await notifyLineOwner(`${paid ? "會員付款成功" : "會員付款未完成"}\n項目：${productName}\n會員：${member.email}\n會員編號：${member.id}\n交易：${tradeNo}`);
 
   return { ok: true, paid, member };
 }
@@ -351,7 +422,8 @@ async function handleMemberStatus(memberId) {
       email: member.email,
       plan: active ? "vip" : "free",
       status: member.status,
-      activeUntil: member.activeUntil || null
+      activeUntil: member.activeUntil || null,
+      pointsBalance: positiveInteger(member.pointsBalance, 0)
     }
   };
 }

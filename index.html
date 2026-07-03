@@ -393,7 +393,7 @@
           <article class="plan-card">
             <span>Points</span>
             <strong>點數包</strong>
-            <p>NT$99 / 50 次，籌備中</p>
+            <p>NT$99 / 50 次</p>
           </article>
           <article class="plan-card">
             <span>VIP</span>
@@ -409,7 +409,14 @@
             <input id="memberEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
             <label for="memberLineName">LINE 顯示名稱</label>
             <input id="memberLineName" name="lineName" type="text" autocomplete="name" placeholder="方便付款後核對" />
-            <button class="member-apply-button" id="memberCheckoutButton" type="submit">
+            <button class="member-apply-button" id="memberPointsButton" type="submit" name="product" value="points">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3 4 7v6c0 4.8 3.4 7.3 8 8 4.6-.7 8-3.2 8-8V7l-8-4Z" />
+                <path d="M8 12h8M12 8v8" />
+              </svg>
+              <span>購買點數包 NT$99 / 50 次</span>
+            </button>
+            <button class="member-apply-button" id="memberCheckoutButton" type="submit" name="product" value="vip">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 3 4 7v6c0 4.8 3.4 7.3 8 8 4.6-.7 8-3.2 8-8V7l-8-4Z" />
                 <path d="m8.5 12.5 2.3 2.3 4.9-5.3" />
@@ -424,7 +431,7 @@
             </svg>
             <span>需要協助，開啟 LINE</span>
           </button>
-          <p class="member-apply-status" id="memberApplyStatus" role="status">付款成功後會自動開通；LINE 只用來通知與人工協助。</p>
+          <p class="member-apply-status" id="memberApplyStatus" role="status">付款成功後會自動開通或加點；LINE 只用來通知與人工協助。</p>
         </div>
       </div>
     </dialog>
