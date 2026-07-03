@@ -520,7 +520,22 @@ h1 {
   gap: 10px;
 }
 
-.member-apply-button {
+.member-apply-form {
+  display: grid;
+  gap: 10px;
+}
+
+.member-apply-form label {
+  color: #f6e5b8;
+  font-size: 0.92rem;
+}
+
+.member-apply-form input {
+  height: 46px;
+}
+
+.member-apply-button,
+.member-line-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -537,7 +552,16 @@ h1 {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16), 0 14px 28px rgba(0, 0, 0, 0.3);
 }
 
-.member-apply-button svg {
+.member-line-button {
+  border-color: rgba(232, 189, 98, 0.24);
+  color: #f4e7c4;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent),
+    linear-gradient(180deg, #193f38, #0a2420);
+}
+
+.member-apply-button svg,
+.member-line-button svg {
   width: 21px;
   height: 21px;
   fill: none;

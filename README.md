@@ -1,6 +1,6 @@
 # 奇幻線上易經卜卦
 
-這是一個可直接架站的靜態 PWA 網站。使用者可以在網頁上輸入問題、選擇問事方向，網站會用籌策法起六爻，產生本卦、動爻、變卦與解說。
+這是一個可直接架站的 PWA 網站。使用者可以在網頁上輸入問題、選擇問事方向，網站會用籌策法起六爻，產生本卦、動爻、變卦與解說。
 
 ## 適合的架站方式
 
@@ -11,6 +11,8 @@
 - GitHub Pages：把這些檔案放到 repository 根目錄後啟用 Pages。
 
 PWA 安裝功能需要 HTTPS。Netlify、Vercel、GitHub Pages 預設都會提供 HTTPS。
+
+目前正式版使用 Vercel 承接 AI、會員資料庫與金流 API。
 
 ## 需要一起上傳的檔案
 
@@ -48,6 +50,34 @@ http://127.0.0.1:4173/
 - `robots.txt` 可以加上正式 sitemap。
 - 若要做品牌名稱、LINE 分享圖、SEO 文案，可以再補 Open Graph 圖與 meta 描述。
 
+## Vercel 環境變數
+
+AI 解卦：
+
+- `OPENAI_API_KEY`
+- `OPENAI_MODEL`，可選
+
+會員資料庫，使用 Upstash Redis REST：
+
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+
+綠界金流，使用信用卡定期定額：
+
+- `ECPAY_ENV`，`stage` 或 `production`
+- `ECPAY_MERCHANT_ID`
+- `ECPAY_HASH_KEY`
+- `ECPAY_HASH_IV`
+- `MEMBERSHIP_MONTHLY_AMOUNT`
+- `MEMBERSHIP_EXEC_TIMES`，可選，預設 12
+- `PUBLIC_SITE_URL`，正式站網址
+- `PUBLIC_API_BASE_URL`，Vercel API 網址
+
+LINE 通知，使用 LINE Messaging API：
+
+- `LINE_CHANNEL_ACCESS_TOKEN`
+- `LINE_NOTIFY_USER_ID`
+
 ## 隱私
 
-目前網站不需要後端，也不會把使用者問題送到伺服器。最近占卜紀錄只存在使用者自己的瀏覽器中。
+最近占卜紀錄只存在使用者自己的瀏覽器中。會員註冊、付款狀態與 AI 追問會送到 Vercel API 處理。

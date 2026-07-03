@@ -1377,6 +1377,7 @@ function consumeAiQuota() {
 }
 
 function openMemberDialog() {
+  prepareMemberCheckoutForm();
   $("#memberDialog").showModal();
 }
 
@@ -1404,7 +1405,31 @@ async function copyMemberApplication(text) {
   return false;
 }
 
-async function handleMemberApply() {
+function prepareMemberCheckoutForm() {
+  if (!state.member) initMembership();
+  const form = $("#memberCheckoutForm");
+  if (!form) return;
+
+  const checkoutUrl = String(window.ICHING_MEMBER_CHECKOUT_URL || "").trim();
+  form.action = checkoutUrl;
+  $("#checkoutMemberId").value = state.member.id;
+  $("#checkoutSourceUrl").value = window.location.href;
+}
+
+async function handleMemberCheckoutSubmit(event) {
+  prepareMemberCheckoutForm();
+  const form = event.currentTarget;
+  const status = $("#memberApplyStatus");
+  if (!form.action) {
+    event.preventDefault();
+    status.textContent = "線上付款尚未設定，請先用 LINE 聯絡站主。";
+    await handleMemberLineContact();
+    return;
+  }
+  status.textContent = "正在建立會員資料，準備前往付款頁...";
+}
+
+async function handleMemberLineContact() {
   const status = $("#memberApplyStatus");
   const text = buildMemberApplicationText();
   const contactUrl = String(window.ICHING_MEMBER_CONTACT_URL || "").trim();
@@ -1421,6 +1446,30 @@ async function handleMemberApply() {
       : `會員編號：${state.member.id}。請截圖或複製這組編號給站主。`;
   } catch {
     status.textContent = `會員編號：${state.member.id}。請截圖或複製這組編號給站主。`;
+  }
+}
+
+async function refreshOnlineMemberStatus() {
+  if (!state.member) return;
+  const endpoint = String(window.ICHING_MEMBER_STATUS_URL || "").trim();
+  if (!endpoint) return;
+
+  try {
+    const url = `${endpoint}?memberId=${encodeURIComponent(state.member.id)}`;
+    const response = await fetch(url, { headers: { Accept: "application/json" } });
+    if (!response.ok) return;
+    const data = await response.json();
+    if (data.plan === "vip") {
+      state.member.plan = "vip";
+      state.member.vipUntil = data.activeUntil;
+    } else if (state.member.plan === "vip" && data.status !== "active") {
+      state.member.plan = "free";
+      state.member.vipUntil = "";
+    }
+    saveMember();
+    updateMemberUi();
+  } catch (error) {
+    console.info("Online member status check skipped.", error);
   }
 }
 
@@ -1804,7 +1853,8 @@ function setupEvents() {
   $("#hexSearch").addEventListener("input", renderLibrary);
   $("#aiForm").addEventListener("submit", handleAiSubmit);
   $("#memberButton").addEventListener("click", openMemberDialog);
-  $("#memberApplyButton").addEventListener("click", handleMemberApply);
+  $("#memberCheckoutForm").addEventListener("submit", handleMemberCheckoutSubmit);
+  $("#memberLineButton").addEventListener("click", handleMemberLineContact);
   $("#shareResultButton").addEventListener("click", shareCurrentReading);
   $("#copyResultButton").addEventListener("click", copyCurrentReadingLink);
   window.addEventListener("hashchange", loadSharedReadingFromUrl);
@@ -1838,6 +1888,7 @@ function init() {
   setupEvents();
   setupInstall();
   initMembership();
+  refreshOnlineMemberStatus();
   initAiAssistant();
   renderLibrary();
   renderHistory();

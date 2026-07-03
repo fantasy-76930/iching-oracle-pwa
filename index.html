@@ -295,14 +295,29 @@
           </article>
         </div>
         <div class="member-apply">
-          <button class="member-apply-button" id="memberApplyButton" type="button">
+          <form class="member-apply-form" id="memberCheckoutForm" method="post" action="">
+            <input type="hidden" name="memberId" id="checkoutMemberId" />
+            <input type="hidden" name="sourceUrl" id="checkoutSourceUrl" />
+            <label for="memberEmail">會員 Email</label>
+            <input id="memberEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
+            <label for="memberLineName">LINE 顯示名稱</label>
+            <input id="memberLineName" name="lineName" type="text" autocomplete="name" placeholder="方便付款後核對" />
+            <button class="member-apply-button" id="memberCheckoutButton" type="submit">
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3 4 7v6c0 4.8 3.4 7.3 8 8 4.6-.7 8-3.2 8-8V7l-8-4Z" />
+                <path d="m8.5 12.5 2.3 2.3 4.9-5.3" />
+              </svg>
+              <span>線上註冊並付款</span>
+            </button>
+          </form>
+          <button class="member-line-button" id="memberLineButton" type="button">
             <svg viewBox="0 0 24 24" aria-hidden="true">
-              <path d="M12 3 4 7v6c0 4.8 3.4 7.3 8 8 4.6-.7 8-3.2 8-8V7l-8-4Z" />
-              <path d="m8.5 12.5 2.3 2.3 4.9-5.3" />
+              <path d="M5 5h14v10H8l-3 4V5Z" />
+              <path d="M8 9h8M8 12h5" />
             </svg>
-            <span>申請月費會員</span>
+            <span>需要協助，開啟 LINE</span>
           </button>
-          <p class="member-apply-status" id="memberApplyStatus" role="status">付款與開通採人工確認，按下後會複製申請資料並開啟 LINE 官方帳號。</p>
+          <p class="member-apply-status" id="memberApplyStatus" role="status">付款成功後會自動開通；LINE 只用來通知與人工協助。</p>
         </div>
       </div>
     </dialog>
