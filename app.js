@@ -254,6 +254,62 @@ const LINE_VALUE = {
 
 const FREE_DAILY_AI_LIMIT = 3;
 const MEMBER_STORAGE_KEY = "iching-member";
+const DAILY_ZODIAC_SIGNS = ["鼠", "牛", "虎", "兔", "龍", "蛇", "馬", "羊", "猴", "雞", "狗", "豬"];
+const DAILY_DIRECTIONS = ["正北", "東北", "正東", "東南", "正南", "西南", "正西", "西北"];
+const DAILY_COLORS = ["金色", "翡翠綠", "米白", "湖水藍", "朱紅", "墨黑", "暖橘", "銀灰", "茶褐", "青碧", "紫檀", "珍珠白"];
+const DAILY_HOURS = [
+  "子時 23:00-01:00",
+  "丑時 01:00-03:00",
+  "寅時 03:00-05:00",
+  "卯時 05:00-07:00",
+  "辰時 07:00-09:00",
+  "巳時 09:00-11:00",
+  "午時 11:00-13:00",
+  "未時 13:00-15:00",
+  "申時 15:00-17:00",
+  "酉時 17:00-19:00",
+  "戌時 19:00-21:00",
+  "亥時 21:00-23:00"
+];
+const DAILY_WEALTH_FLOWS = [
+  "正財穩中有進，適合整理帳務與確認應收款",
+  "偏財訊號較明顯，但宜小額試水，不宜貪快",
+  "人脈帶財，適合請教前輩或主動交換資源",
+  "合作運轉強，談條件時先抓清楚分工與比例",
+  "財氣藏在細節，適合檢查合約、報價與成本",
+  "流動財較旺，適合處理銷售、曝光與客戶回訪",
+  "守財比衝財更有利，先把不必要支出收斂",
+  "學習帶財，今天適合研究工具、課程與新方法"
+];
+const DAILY_ACTIONS = [
+  "先收尾再開新局",
+  "把錢花在能累積的地方",
+  "主動聯絡沉睡客戶",
+  "用數字檢查直覺",
+  "先談價值再談價格",
+  "保留一點現金彈性",
+  "把小機會做成穩定流程",
+  "適合低調布局"
+];
+const DAILY_CAUTIONS = [
+  "避免情緒性消費",
+  "不要聽到明牌就重押",
+  "口頭承諾要留下紀錄",
+  "不要為了面子多花錢",
+  "合夥帳目要算清楚",
+  "避免臨時改價",
+  "別急著答應不熟的邀約",
+  "不要把時間成本看太低"
+];
+const DAILY_OPENINGS = [
+  "先穩後進，財氣在耐心裡成形",
+  "小財先動，大財後至",
+  "貴人與資訊同時重要",
+  "適合整理資源，讓錢流回正軌",
+  "宜守中帶攻，忌貪快冒進",
+  "曝光有利，行動要精準"
+];
+const DAILY_HASHTAGS = ["#玄卦堂", "#今日生肖運勢", "#財運方位", "#易經占卜", "#奇幻文創"];
 
 const state = {
   selectedDomain: "career",
@@ -1175,9 +1231,13 @@ function getShareData(reading) {
 }
 
 async function copyText(text) {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
-    return;
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {
+    // Fall back to the selection-based copy path below.
   }
 
   const textarea = document.createElement("textarea");
@@ -1187,8 +1247,10 @@ async function copyText(text) {
   textarea.style.left = "-9999px";
   document.body.append(textarea);
   textarea.select();
-  document.execCommand("copy");
+  const copied = document.execCommand("copy");
   textarea.remove();
+  if (!copied) throw new Error("Unable to copy text");
+  return true;
 }
 
 async function shareCurrentReading() {
@@ -1303,6 +1365,122 @@ function taipeiDateKey() {
     month: "2-digit",
     day: "2-digit"
   }).format(new Date());
+}
+
+function taipeiDateLabel() {
+  return new Intl.DateTimeFormat("zh-TW", {
+    timeZone: "Asia/Taipei",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "long"
+  }).format(new Date());
+}
+
+function dailyHash(text) {
+  let hash = 2166136261;
+  for (let index = 0; index < text.length; index += 1) {
+    hash ^= text.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function pickDaily(list, seed, offset = 0) {
+  const mixed = (seed + Math.imul(offset + 1, 2654435761)) >>> 0;
+  return list[mixed % list.length];
+}
+
+function dailyStars(score) {
+  return `${"★".repeat(score)}${"☆".repeat(5 - score)}`;
+}
+
+function publicSiteUrl() {
+  const host = window.location.hostname;
+  if (!host || host === "127.0.0.1" || host === "localhost") return "https://iching-oracle-pwa.vercel.app/";
+  return `${window.location.origin}${window.location.pathname}`;
+}
+
+function dailyZodiacLine(sign, index, dateKey) {
+  const seed = dailyHash(`${dateKey}:${sign}:${index}`);
+  const score = 2 + (seed % 4);
+  const direction = pickDaily(DAILY_DIRECTIONS, seed, 1);
+  let supportDirection = pickDaily(DAILY_DIRECTIONS, seed, 2);
+  if (supportDirection === direction) {
+    supportDirection = DAILY_DIRECTIONS[(DAILY_DIRECTIONS.indexOf(direction) + 3) % DAILY_DIRECTIONS.length];
+  }
+  const color = pickDaily(DAILY_COLORS, seed, 3);
+  const hour = pickDaily(DAILY_HOURS, seed, 4);
+  const flow = pickDaily(DAILY_WEALTH_FLOWS, seed, 5);
+  const action = pickDaily(DAILY_ACTIONS, seed, 6);
+  const caution = pickDaily(DAILY_CAUTIONS, seed, 7);
+
+  return [
+    `【${sign}】財運 ${dailyStars(score)}｜財位：${direction}｜貴人方：${supportDirection}`,
+    `開運色：${color}｜吉時：${hour}`,
+    `${flow}，${action}；${caution}。`
+  ].join("\n");
+}
+
+function generateDailyFortunePost() {
+  const dateKey = taipeiDateKey();
+  const dateLabel = taipeiDateLabel();
+  const seed = dailyHash(`daily-post:${dateKey}`);
+  const overallDirection = pickDaily(DAILY_DIRECTIONS, seed, 1);
+  const overallColor = pickDaily(DAILY_COLORS, seed, 2);
+  const opening = pickDaily(DAILY_OPENINGS, seed, 3);
+  const todayAction = pickDaily(DAILY_ACTIONS, seed, 4);
+  const todayCaution = pickDaily(DAILY_CAUTIONS, seed, 5);
+  const zodiacLines = DAILY_ZODIAC_SIGNS.map((sign, index) => dailyZodiacLine(sign, index, dateKey));
+  const header = [
+    `玄卦堂｜${dateLabel} 今日 12 生肖方位財運`,
+    `今日總財位：${overallDirection}｜開運色：${overallColor}`,
+    `整體財氣：${opening}`
+  ].join("\n");
+  const footer = [
+    `今日宜：${todayAction}。`,
+    `今日忌：${todayCaution}。`,
+    "",
+    "以上為生活參考，投資與重大決策請自行評估。",
+    `線上起卦：${publicSiteUrl()}`,
+    "",
+    DAILY_HASHTAGS.join(" ")
+  ].join("\n");
+
+  return [header, zodiacLines.join("\n\n"), footer].join("\n\n");
+}
+
+function renderDailyFortunePost(showStatus = false) {
+  const output = $("#dailyPostOutput");
+  if (!output) return;
+
+  output.value = generateDailyFortunePost();
+  const date = $("#dailyPostDate");
+  if (date) date.textContent = taipeiDateLabel();
+
+  const status = $("#dailyPostStatus");
+  if (status && showStatus) status.textContent = "今日 FB 文案已產生。";
+}
+
+async function copyDailyFortunePost() {
+  const output = $("#dailyPostOutput");
+  const status = $("#dailyPostStatus");
+  if (!output) return;
+  if (!output.value.trim()) renderDailyFortunePost();
+
+  try {
+    await copyText(output.value);
+    if (status) status.textContent = "已複製，可直接貼到 FB。";
+  } catch (error) {
+    output.focus();
+    output.select();
+    try {
+      const copied = document.execCommand("copy");
+      if (status) status.textContent = copied ? "已複製，可直接貼到 FB。" : "已選取文案，可手動複製。";
+    } catch {
+      if (status) status.textContent = "已選取文案，可手動複製。";
+    }
+  }
 }
 
 function makeMemberId() {
@@ -1855,6 +2033,8 @@ function setupEvents() {
   $("#memberButton").addEventListener("click", openMemberDialog);
   $("#memberCheckoutForm").addEventListener("submit", handleMemberCheckoutSubmit);
   $("#memberLineButton").addEventListener("click", handleMemberLineContact);
+  $("#dailyPostGenerateButton").addEventListener("click", () => renderDailyFortunePost(true));
+  $("#dailyPostCopyButton").addEventListener("click", copyDailyFortunePost);
   $("#shareResultButton").addEventListener("click", shareCurrentReading);
   $("#copyResultButton").addEventListener("click", copyCurrentReadingLink);
   window.addEventListener("hashchange", loadSharedReadingFromUrl);
@@ -1890,6 +2070,7 @@ function init() {
   initMembership();
   refreshOnlineMemberStatus();
   initAiAssistant();
+  renderDailyFortunePost();
   renderLibrary();
   renderHistory();
   registerServiceWorker();

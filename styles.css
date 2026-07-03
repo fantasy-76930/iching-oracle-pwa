@@ -755,6 +755,7 @@ input::placeholder {
 
 .result-section,
 .casting-section,
+.daily-post-section,
 .library-section,
 .version-section,
 .history-section {
@@ -1452,6 +1453,7 @@ input::placeholder {
   color: var(--gold);
 }
 
+.daily-date,
 .version-badge {
   display: inline-flex;
   align-items: center;
@@ -1464,6 +1466,70 @@ input::placeholder {
   font-size: 0.9rem;
   font-weight: 900;
   white-space: nowrap;
+}
+
+.daily-post-panel,
+.daily-post-intro {
+  border: 1px solid rgba(232, 189, 98, 0.18);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 219, 0.05), transparent 84px),
+    rgba(6, 22, 20, 0.76);
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.24);
+}
+
+.daily-post-panel {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(0, 1.28fr);
+  gap: 14px;
+  padding: 14px;
+}
+
+.daily-post-intro {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  padding: 18px;
+  background:
+    radial-gradient(circle at 50% 0%, rgba(31, 176, 136, 0.18), transparent 66%),
+    rgba(0, 0, 0, 0.16);
+  box-shadow: none;
+}
+
+.daily-post-intro h3 {
+  margin-bottom: 0;
+  color: #fff8dc;
+  font-size: 1.35rem;
+}
+
+.daily-post-intro p {
+  margin-bottom: 0;
+  color: #e8ddbd;
+}
+
+.daily-post-actions {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.daily-post-actions .button,
+.daily-post-actions .share-button {
+  width: 100%;
+}
+
+.daily-post-output {
+  min-height: 620px;
+  resize: vertical;
+  border-color: rgba(232, 189, 98, 0.28);
+  color: #fff6d5;
+  background:
+    linear-gradient(180deg, rgba(0, 0, 0, 0.16), transparent 120px),
+    rgba(2, 10, 9, 0.64);
+  font-family: "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  font-size: 0.98rem;
+  line-height: 1.72;
 }
 
 .version-hero,
@@ -1594,6 +1660,7 @@ input::placeholder {
 
   .result-hero,
   .casting-board,
+  .daily-post-panel,
   .reading-grid,
   .change-grid,
   .library-tools,
@@ -1684,6 +1751,10 @@ input::placeholder {
 
   .version-hero {
     grid-template-columns: 1fr;
+  }
+
+  .daily-post-output {
+    min-height: 680px;
   }
 
   .domain-grid {

@@ -45,6 +45,7 @@
       </a>
       <nav class="nav-pills" aria-label="主要區塊">
         <a href="#oracle">起卦</a>
+        <a href="#daily-post">貼文</a>
         <a href="#library">卦典</a>
         <a href="#version">版本</a>
         <a href="#history">紀錄</a>
@@ -231,6 +232,41 @@
           <summary>籌策紀錄</summary>
           <div id="processLog" class="process-log"></div>
         </details>
+      </section>
+
+      <section class="daily-post-section" id="daily-post">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">每日貼文</p>
+            <h2>生肖方位財運</h2>
+          </div>
+          <span class="daily-date" id="dailyPostDate">今日</span>
+        </div>
+
+        <div class="daily-post-panel">
+          <div class="daily-post-intro">
+            <h3>今日可發文案</h3>
+            <p>台北日期每日一版，適合 FB、LINE 社群與 IG 貼文。</p>
+            <div class="daily-post-actions">
+              <button class="button primary" id="dailyPostGenerateButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M12 3v18M5 8h14M7 16h10" />
+                  <path d="m8 4 4-2 4 2M8 20l4 2 4-2" />
+                </svg>
+                <span>產生今日貼文</span>
+              </button>
+              <button class="share-button" id="dailyPostCopyButton" type="button">
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M8 8h10v12H8z" />
+                  <path d="M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+                </svg>
+                <span>複製 FB 文案</span>
+              </button>
+            </div>
+            <p class="share-status" id="dailyPostStatus" role="status"></p>
+          </div>
+          <textarea class="daily-post-output" id="dailyPostOutput" rows="20" readonly></textarea>
+        </div>
       </section>
 
       <section class="library-section" id="library">
