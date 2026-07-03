@@ -101,6 +101,14 @@ function quotaIdentity(payload, meta) {
   return String(raw).replace(/[^a-zA-Z0-9_.:-]/g, "").slice(0, 80) || "anonymous";
 }
 
+function ipQuotaIdentity(meta) {
+  const raw = String(meta?.ip || "")
+    .split(",")[0]
+    .trim()
+    .replace(/^::ffff:/, "");
+  return `ip:${raw.replace(/[^a-zA-Z0-9_.:-]/g, "").slice(0, 80) || "anonymous"}`;
+}
+
 async function redisPipeline(commands) {
   const response = await fetch(`${process.env.UPSTASH_REDIS_REST_URL}/pipeline`, {
     method: "POST",
@@ -174,7 +182,7 @@ async function enforceDailyQuota(payload, meta) {
   }
 
   const limit = Number(process.env.FREE_DAILY_AI_LIMIT || DEFAULT_FREE_DAILY_LIMIT);
-  const quota = await enforceCounterLimit(identity, limit, "iching-ai");
+  const quota = await enforceCounterLimit(ipQuotaIdentity(meta), limit, "iching-ai-free-ip");
   if (quota.allowed) {
     return {
       ...quota,
