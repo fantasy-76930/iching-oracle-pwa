@@ -151,6 +151,17 @@ function verifyEcpayPayload(payload) {
   return checkMacValue(payload) === String(payload.CheckMacValue).toUpperCase();
 }
 
+function readEcpayPaymentState(payload) {
+  const simulated = String(payload.SimulatePaid || "") === "1";
+  const rtnCode = String(payload.RtnCode || "").trim();
+
+  return {
+    paid: !simulated && rtnCode === "1",
+    simulated,
+    rtnCode
+  };
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -280,7 +291,8 @@ async function activateMemberFromPayment(payload) {
   const member = await getMember(memberId);
   if (!member) return { ok: false, message: "Member not found" };
 
-  const paid = String(payload.RtnCode || payload.PeriodType || "") === "1" || String(payload.RtnMsg || "").toLowerCase().includes("succeeded");
+  const paymentState = readEcpayPaymentState(payload);
+  const paid = paymentState.paid;
   const now = new Date().toISOString();
   if (paid) {
     member.plan = "vip";
@@ -294,8 +306,10 @@ async function activateMemberFromPayment(payload) {
       paymentDate: payload.PaymentDate || null
     };
   } else {
-    member.status = "payment_failed";
-    member.lastPaymentError = payload.RtnMsg || "Payment failed";
+    member.status = paymentState.simulated ? "payment_simulated" : "payment_failed";
+    member.lastPaymentError = paymentState.simulated
+      ? "ECPay simulated payment; member was not activated."
+      : payload.RtnMsg || "Payment failed";
   }
   member.updatedAt = now;
   await saveMember(member);

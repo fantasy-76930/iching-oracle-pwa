@@ -113,9 +113,35 @@ async function redisPipeline(commands) {
   return response.json();
 }
 
+async function getOnlineMember(memberId) {
+  if (!memberId || !quotaStoreConfigured()) return null;
+  const cleanId = String(memberId).replace(/[^a-zA-Z0-9_.:-]/g, "").slice(0, 80);
+  if (!cleanId) return null;
+
+  const results = await redisPipeline([["GET", `member:${cleanId}`]]);
+  const raw = results?.[0]?.result;
+  if (!raw) return null;
+
+  try {
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+function isActiveOnlineVip(member) {
+  if (!member || member.status !== "active") return false;
+  if (member.plan !== "vip") return false;
+  return !member.activeUntil || member.activeUntil >= taipeiDateKey();
+}
+
 async function enforceDailyQuota(payload, meta) {
-  const plan = payload?.member?.plan || "free";
-  if (plan !== "free" || !quotaStoreConfigured()) {
+  if (!quotaStoreConfigured()) {
+    return { allowed: true };
+  }
+
+  const onlineMember = await getOnlineMember(payload?.member?.id);
+  if (isActiveOnlineVip(onlineMember)) {
     return { allowed: true };
   }
 

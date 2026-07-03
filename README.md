@@ -73,6 +73,14 @@ AI 解卦：
 - `PUBLIC_SITE_URL`，正式站網址
 - `PUBLIC_API_BASE_URL`，Vercel API 網址
 
+綠界後台常用回傳網址：
+
+- 付款結果通知：`https://iching-oracle-pwa.vercel.app/api/ecpay-return`
+- 定期定額每期通知：`https://iching-oracle-pwa.vercel.app/api/ecpay-return`
+- 使用者付款完成頁：`https://iching-oracle-pwa.vercel.app/api/ecpay-result`
+
+注意：綠界後台的模擬付款通知不會開通 VIP，只有正式付款成功才會把會員狀態改為 VIP。
+
 LINE 通知，使用 LINE Messaging API：
 
 - `LINE_CHANNEL_ACCESS_TOKEN`
