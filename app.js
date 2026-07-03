@@ -255,8 +255,18 @@ const LINE_VALUE = {
 const FREE_DAILY_AI_LIMIT = 3;
 const MEMBER_STORAGE_KEY = "iching-member";
 const DAILY_ZODIAC_SIGNS = ["鼠", "牛", "虎", "兔", "龍", "蛇", "馬", "羊", "猴", "雞", "狗", "豬"];
-const DAILY_DIRECTIONS = ["正北", "東北", "正東", "東南", "正南", "西南", "正西", "西北"];
-const DAILY_COLORS = ["金色", "翡翠綠", "米白", "湖水藍", "朱紅", "墨黑", "暖橘", "銀灰", "茶褐", "青碧", "紫檀", "珍珠白"];
+const DAILY_DIRECTIONS = [
+  "正北", "北偏東", "東北", "東北偏東", "正東", "東偏南",
+  "東南", "東南偏南", "正南", "南偏西", "西南", "西南偏西",
+  "正西", "西偏北", "西北", "西北偏北", "北方明位", "東方生位",
+  "南方旺位", "西方收位", "東北財門", "東南文昌", "西南貴位", "西北資源位"
+];
+const DAILY_COLORS = [
+  "金色", "翡翠綠", "米白", "湖水藍", "朱紅", "墨黑",
+  "暖橘", "銀灰", "茶褐", "青碧", "紫檀", "珍珠白",
+  "琥珀黃", "孔雀藍", "松石綠", "玫瑰金", "霧灰", "靛藍",
+  "月白", "胭脂紅", "檀木棕", "薄荷綠", "香檳金", "玄青"
+];
 const DAILY_HOURS = [
   "子時 23:00-01:00",
   "丑時 01:00-03:00",
@@ -279,7 +289,23 @@ const DAILY_WEALTH_FLOWS = [
   "財氣藏在細節，適合檢查合約、報價與成本",
   "流動財較旺，適合處理銷售、曝光與客戶回訪",
   "守財比衝財更有利，先把不必要支出收斂",
-  "學習帶財，今天適合研究工具、課程與新方法"
+  "學習帶財，今天適合研究工具、課程與新方法",
+  "舊案回溫有機會，適合追蹤曾經談過的合作",
+  "現金流需要看緊，先確認進出款時間再承諾",
+  "口碑能帶來財氣，把服務細節做好比硬推更有效",
+  "靈感容易變收入，適合記下點子並快速做小測試",
+  "貴人財偏旺，適合提出具體需求而不是只閒聊",
+  "整理庫存與閒置資源，容易找到可變現的空間",
+  "談判運可用，適合重談費用、期限或合作條件",
+  "穩定客源是重點，今天宜把熟客關係顧好",
+  "遠方資訊帶財，留意外縣市、海外或網路機會",
+  "技術財走強，越專業越容易取得信任",
+  "家庭與店面開銷需盤點，節流會比開源更快見效",
+  "內容曝光有利，適合發布作品、案例或今日提醒",
+  "時間管理就是財運，排程越清楚越不容易漏財",
+  "適合修正定價，別把專業賣得太便宜",
+  "小額回饋能換大信任，適合做會員、熟客互動",
+  "資料與名單是財庫，今天適合整理客戶資訊"
 ];
 const DAILY_ACTIONS = [
   "先收尾再開新局",
@@ -289,7 +315,23 @@ const DAILY_ACTIONS = [
   "先談價值再談價格",
   "保留一點現金彈性",
   "把小機會做成穩定流程",
-  "適合低調布局"
+  "適合低調布局",
+  "把待確認事項寫成清單",
+  "先做一個可驗證的小版本",
+  "把報價與交付範圍說清楚",
+  "回覆重要訊息不要拖過今天",
+  "把曝光內容排程出去",
+  "整理帳本與訂閱支出",
+  "向可信任的人請益",
+  "把手上資源重新分類",
+  "先問需求再提出方案",
+  "用一件小成果建立信任",
+  "把合作流程留成文字",
+  "今天適合做溫和加價",
+  "先穩住主業現金流",
+  "把時間留給高價值任務",
+  "主動確認款項與發票",
+  "把舊素材改成新貼文"
 ];
 const DAILY_CAUTIONS = [
   "避免情緒性消費",
@@ -299,7 +341,23 @@ const DAILY_CAUTIONS = [
   "合夥帳目要算清楚",
   "避免臨時改價",
   "別急著答應不熟的邀約",
-  "不要把時間成本看太低"
+  "不要把時間成本看太低",
+  "別把短期熱度當成長期收入",
+  "不要替別人的風險背書",
+  "避免一次承接太多零碎任務",
+  "不要把私人情緒帶進談判",
+  "先確認付款條件再開工",
+  "別因小便宜忽略品質",
+  "不要過度承諾交期",
+  "避免把現金卡在庫存裡",
+  "不要只看營收，成本也要算",
+  "別在資訊不足時做大決定",
+  "不要讓人情模糊界線",
+  "避免衝動升級昂貴工具",
+  "不要拖延該收的款項",
+  "別把重要資料只放在腦中",
+  "避免為了趕快成交而降太多",
+  "不要忽略睡眠造成的判斷偏差"
 ];
 const DAILY_OPENINGS = [
   "先穩後進，財氣在耐心裡成形",
@@ -307,7 +365,31 @@ const DAILY_OPENINGS = [
   "貴人與資訊同時重要",
   "適合整理資源，讓錢流回正軌",
   "宜守中帶攻，忌貪快冒進",
-  "曝光有利，行動要精準"
+  "曝光有利，行動要精準",
+  "財從秩序中來，越清楚越有利",
+  "今日適合修正策略，不宜硬衝",
+  "先聚焦一件事，財氣自然不散",
+  "信任是今日財門，承諾要說到做到",
+  "舊資源有新用法，別急著另起爐灶",
+  "細水長流勝過一時暴衝",
+  "貴人藏在日常對話裡，主動但不強求",
+  "先盤點，再出手，今日宜用腦勝過用力",
+  "把混亂收束，錢就比較留得住",
+  "適合做長線安排，短利不必追太急"
+];
+const DAILY_THEMES = [
+  { title: "招財日", focus: "適合主動開口、開發客源與提出合作", advice: "先把價值說清楚，再談金額會更順" },
+  { title: "守財日", focus: "適合整理帳務、控管支出與檢查現金流", advice: "今天少一筆浪費，就是多一分底氣" },
+  { title: "貴人日", focus: "適合請益、轉介紹、經營熟人與合作關係", advice: "需求越具體，別人越容易幫得上忙" },
+  { title: "開源日", focus: "適合上架服務、發布內容與測試新收入", advice: "先小規模試行，不急著一次做滿" },
+  { title: "避險日", focus: "適合檢查條款、風險、承諾與付款細節", advice: "把醜話說在前面，後面反而更好走" },
+  { title: "整備日", focus: "適合歸檔、排程、整理素材與優化流程", advice: "看起來慢，其實是在替下一波加速" },
+  { title: "曝光日", focus: "適合發文、直播、作品展示與社群互動", advice: "不要只求熱鬧，要讓人知道你能解決什麼" },
+  { title: "談判日", focus: "適合談價格、談分工、談權責與談期限", advice: "柔和但堅定，界線清楚才有好合作" },
+  { title: "回收日", focus: "適合收款、追蹤舊案、喚醒名單與回訪", advice: "財氣未必在新地方，也可能在舊關係裡" },
+  { title: "學習日", focus: "適合研究工具、補足技能與吸收新方法", advice: "今天學到的省力方式，之後會變成收入差距" },
+  { title: "定價日", focus: "適合檢查報價、套餐、會員制與成本結構", advice: "不要只算價格，也要算時間與精神成本" },
+  { title: "蓄勢日", focus: "適合低調布局、建立清單與等待成熟時機", advice: "不必急著被看見，先把準備做到位" }
 ];
 const DAILY_HASHTAGS = ["#玄卦堂", "#今日生肖運勢", "#財運方位", "#易經占卜", "#奇幻文創"];
 
@@ -1367,14 +1449,22 @@ function taipeiDateKey() {
   }).format(new Date());
 }
 
-function taipeiDateLabel() {
+function taipeiDateLabel(dateKey = "") {
+  const date = dateKey ? new Date(`${dateKey}T04:00:00.000Z`) : new Date();
   return new Intl.DateTimeFormat("zh-TW", {
     timeZone: "Asia/Taipei",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
     weekday: "long"
-  }).format(new Date());
+  }).format(date);
+}
+
+function dayOfYearFromDateKey(dateKey) {
+  const [year, month, day] = dateKey.split("-").map(Number);
+  const current = Date.UTC(year, month - 1, day);
+  const start = Date.UTC(year, 0, 1);
+  return Math.floor((current - start) / 86400000) + 1;
 }
 
 function dailyHash(text) {
@@ -1386,9 +1476,63 @@ function dailyHash(text) {
   return hash >>> 0;
 }
 
+function nextDailySeed(seed) {
+  let value = seed >>> 0;
+  value ^= value << 13;
+  value ^= value >>> 17;
+  value ^= value << 5;
+  return value >>> 0;
+}
+
 function pickDaily(list, seed, offset = 0) {
   const mixed = (seed + Math.imul(offset + 1, 2654435761)) >>> 0;
   return list[mixed % list.length];
+}
+
+function seededShuffle(list, seed) {
+  const items = [...list];
+  let value = seed || 0x9e3779b9;
+  for (let index = items.length - 1; index > 0; index -= 1) {
+    value = nextDailySeed(value + index);
+    const swapIndex = value % (index + 1);
+    [items[index], items[swapIndex]] = [items[swapIndex], items[index]];
+  }
+  return items;
+}
+
+function makeDailyPools(seed) {
+  return {
+    directions: seededShuffle(DAILY_DIRECTIONS, seed + 11),
+    supportDirections: seededShuffle(DAILY_DIRECTIONS, seed + 23),
+    colors: seededShuffle(DAILY_COLORS, seed + 37),
+    hours: seededShuffle(DAILY_HOURS, seed + 41),
+    flows: seededShuffle(DAILY_WEALTH_FLOWS, seed + 53),
+    actions: seededShuffle(DAILY_ACTIONS, seed + 67),
+    cautions: seededShuffle(DAILY_CAUTIONS, seed + 79)
+  };
+}
+
+function pickUniqueFromPool(pool, used, forbidden = "") {
+  const selected = pool.find((item) => !used.has(item) && item !== forbidden) || pool.find((item) => item !== forbidden) || pool[0];
+  used.add(selected);
+  return selected;
+}
+
+function makeDailyAssignments(pools) {
+  const usedSupportDirections = new Set();
+  return DAILY_ZODIAC_SIGNS.map((sign, index) => {
+    const direction = pools.directions[index % pools.directions.length];
+    return {
+      sign,
+      direction,
+      supportDirection: pickUniqueFromPool(pools.supportDirections, usedSupportDirections, direction),
+      color: pools.colors[index % pools.colors.length],
+      hour: pools.hours[index % pools.hours.length],
+      flow: pools.flows[index % pools.flows.length],
+      action: pools.actions[index % pools.actions.length],
+      caution: pools.cautions[index % pools.cautions.length]
+    };
+  });
 }
 
 function dailyStars(score) {
@@ -1401,41 +1545,40 @@ function publicSiteUrl() {
   return `${window.location.origin}${window.location.pathname}`;
 }
 
-function dailyZodiacLine(sign, index, dateKey) {
+function dailyZodiacLine(sign, index, dateKey, assignment, theme) {
   const seed = dailyHash(`${dateKey}:${sign}:${index}`);
   const score = 2 + (seed % 4);
-  const direction = pickDaily(DAILY_DIRECTIONS, seed, 1);
-  let supportDirection = pickDaily(DAILY_DIRECTIONS, seed, 2);
-  if (supportDirection === direction) {
-    supportDirection = DAILY_DIRECTIONS[(DAILY_DIRECTIONS.indexOf(direction) + 3) % DAILY_DIRECTIONS.length];
-  }
-  const color = pickDaily(DAILY_COLORS, seed, 3);
-  const hour = pickDaily(DAILY_HOURS, seed, 4);
-  const flow = pickDaily(DAILY_WEALTH_FLOWS, seed, 5);
-  const action = pickDaily(DAILY_ACTIONS, seed, 6);
-  const caution = pickDaily(DAILY_CAUTIONS, seed, 7);
+  const zodiacCode = `${dateKey.split("-").join("")}-${String(index + 1).padStart(2, "0")}`;
 
   return [
-    `【${sign}】財運 ${dailyStars(score)}｜財位：${direction}｜貴人方：${supportDirection}`,
-    `開運色：${color}｜吉時：${hour}`,
-    `${flow}，${action}；${caution}。`
+    `【${sign}】財運 ${dailyStars(score)}｜財位：${assignment.direction}｜貴人方：${assignment.supportDirection}｜日碼 ${zodiacCode}`,
+    `開運色：${assignment.color}｜吉時：${assignment.hour}`,
+    `${assignment.flow}。${theme.title}提醒：${assignment.action}；${assignment.caution}。`
   ].join("\n");
 }
 
-function generateDailyFortunePost() {
-  const dateKey = taipeiDateKey();
-  const dateLabel = taipeiDateLabel();
+function generateDailyFortunePost(dateKey = taipeiDateKey()) {
+  const dateLabel = taipeiDateLabel(dateKey);
   const seed = dailyHash(`daily-post:${dateKey}`);
-  const overallDirection = pickDaily(DAILY_DIRECTIONS, seed, 1);
-  const overallColor = pickDaily(DAILY_COLORS, seed, 2);
+  const dayOfYear = dayOfYearFromDateKey(dateKey);
+  const year = dateKey.slice(0, 4);
+  const dailyCode = `${year}-${String(dayOfYear).padStart(3, "0")}`;
+  const theme = pickDaily(DAILY_THEMES, seed, 0);
+  const pools = makeDailyPools(seed);
+  const dailyHex = HEXAGRAMS[(seed + dayOfYear) % HEXAGRAMS.length];
+  const overallDirection = pools.directions[12 % pools.directions.length];
+  const overallColor = pools.colors[12 % pools.colors.length];
   const opening = pickDaily(DAILY_OPENINGS, seed, 3);
-  const todayAction = pickDaily(DAILY_ACTIONS, seed, 4);
-  const todayCaution = pickDaily(DAILY_CAUTIONS, seed, 5);
-  const zodiacLines = DAILY_ZODIAC_SIGNS.map((sign, index) => dailyZodiacLine(sign, index, dateKey));
+  const todayAction = pools.actions[12 % pools.actions.length];
+  const todayCaution = pools.cautions[12 % pools.cautions.length];
+  const assignments = makeDailyAssignments(pools);
+  const zodiacLines = DAILY_ZODIAC_SIGNS.map((sign, index) => dailyZodiacLine(sign, index, dateKey, assignments[index], theme));
   const header = [
     `玄卦堂｜${dateLabel} 今日 12 生肖方位財運`,
+    `年度日碼：${dailyCode}｜今日主題：${theme.title}`,
+    `今日卦氣：第 ${dailyHex.no} 卦 ${dailyHex.name}｜${dailyHex.theme}`,
     `今日總財位：${overallDirection}｜開運色：${overallColor}`,
-    `整體財氣：${opening}`
+    `整體財氣：${opening}。${theme.focus}。${theme.advice}。`
   ].join("\n");
   const footer = [
     `今日宜：${todayAction}。`,
@@ -1456,7 +1599,7 @@ function renderDailyFortunePost(showStatus = false) {
 
   output.value = generateDailyFortunePost();
   const date = $("#dailyPostDate");
-  if (date) date.textContent = taipeiDateLabel();
+  if (date) date.textContent = taipeiDateLabel(taipeiDateKey());
 
   const status = $("#dailyPostStatus");
   if (status && showStatus) status.textContent = "今日 FB 文案已產生。";
