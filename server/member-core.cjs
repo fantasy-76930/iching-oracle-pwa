@@ -197,6 +197,12 @@ function checkoutProductConfig(product) {
   };
 }
 
+function choosePaymentForProduct(productConfig) {
+  const override = cleanText(process.env.ECPAY_CHOOSE_PAYMENT, 20);
+  if (override) return override;
+  return productConfig.type === "points" ? "ALL" : "Credit";
+}
+
 function escapeHtml(value) {
   return String(value || "")
     .replace(/&/g, "&amp;")
@@ -304,7 +310,7 @@ async function handleMemberCheckout(rawPayload) {
     TradeDesc: productConfig.tradeDesc,
     ItemName: productConfig.itemName,
     ReturnURL: `${base}/api/ecpay-return`,
-    ChoosePayment: "Credit",
+    ChoosePayment: choosePaymentForProduct(productConfig),
     ClientBackURL: `${appBaseUrl()}?member_checkout=back`,
     OrderResultURL: `${base}/api/ecpay-result`,
     NeedExtraPaidInfo: "N",
