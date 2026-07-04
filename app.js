@@ -1348,14 +1348,6 @@ async function copyText(text) {
   return true;
 }
 
-function shouldUseNativeImageShare() {
-  const ua = navigator.userAgent || "";
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
-  const isTouchMac = /Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1;
-  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
-  return Boolean(isMobile || isTouchMac || coarsePointer);
-}
-
 async function copyImageBlob(blob) {
   if (!navigator.clipboard?.write || typeof window.ClipboardItem === "undefined") return false;
   try {
@@ -1392,7 +1384,7 @@ async function shareCurrentReading() {
       files: [file]
     };
 
-    if (shouldUseNativeImageShare() && navigator.canShare?.(fileShareData) && navigator.share) {
+    if (navigator.canShare?.(fileShareData) && navigator.share) {
       await navigator.share(fileShareData);
       status.textContent = "已開啟圖片分享面板。";
     } else if (await copyImageBlob(blob)) {
