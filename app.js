@@ -1348,6 +1348,28 @@ async function copyText(text) {
   return true;
 }
 
+function shouldUseNativeImageShare() {
+  const ua = navigator.userAgent || "";
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(ua);
+  const isTouchMac = /Macintosh/i.test(ua) && Number(navigator.maxTouchPoints || 0) > 1;
+  const coarsePointer = window.matchMedia?.("(pointer: coarse)")?.matches;
+  return Boolean(isMobile || isTouchMac || coarsePointer);
+}
+
+async function copyImageBlob(blob) {
+  if (!navigator.clipboard?.write || typeof window.ClipboardItem === "undefined") return false;
+  try {
+    await navigator.clipboard.write([
+      new window.ClipboardItem({
+        [blob.type || "image/png"]: blob
+      })
+    ]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function shareCurrentReading() {
   const reading = getCurrentReading();
   if (!reading) return;
@@ -1370,12 +1392,14 @@ async function shareCurrentReading() {
       files: [file]
     };
 
-    if (navigator.canShare?.(fileShareData) && navigator.share) {
+    if (shouldUseNativeImageShare() && navigator.canShare?.(fileShareData) && navigator.share) {
       await navigator.share(fileShareData);
       status.textContent = "已開啟圖片分享面板。";
+    } else if (await copyImageBlob(blob)) {
+      status.textContent = "圖片已複製，可直接貼到 LINE 對話框。";
     } else {
       downloadBlob(blob, filename);
-      status.textContent = "瀏覽器不支援直接分享圖片，已下載 PNG。";
+      status.textContent = "此瀏覽器不能直接複製圖片，已下載 PNG，可拖到 LINE 傳送。";
     }
   } catch (error) {
     if (error?.name === "AbortError") {
