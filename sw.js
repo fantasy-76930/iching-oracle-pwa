@@ -1,4 +1,4 @@
-const CACHE_NAME = "iching-oracle-v20";
+const CACHE_NAME = "iching-oracle-v21";
 const APP_SHELL = [
   "./",
   "./index.html",

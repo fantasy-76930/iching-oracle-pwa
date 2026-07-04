@@ -1020,8 +1020,8 @@ function loadCanvasImage(src) {
   });
 }
 
-function canvasToBlob(canvas) {
-  return new Promise((resolve) => canvas.toBlob(resolve, "image/png", 0.94));
+function canvasToBlob(canvas, type = "image/jpeg", quality = 0.92) {
+  return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
 function wrapCanvasText(ctx, text, maxWidth, maxLines = 4) {
@@ -1353,7 +1353,7 @@ async function copyImageBlob(blob) {
   try {
     await navigator.clipboard.write([
       new window.ClipboardItem({
-        [blob.type || "image/png"]: blob
+        [blob.type || "image/jpeg"]: blob
       })
     ]);
     return true;
@@ -1376,8 +1376,8 @@ async function shareCurrentReading() {
     if (!blob) {
       throw new Error("Unable to generate image");
     }
-    const filename = `易策玄占-${HEXAGRAM_BY_NO[reading.primaryNo].name}.png`;
-    const file = new File([blob], filename, { type: "image/png" });
+    const filename = `易策玄占-${HEXAGRAM_BY_NO[reading.primaryNo].name}.jpg`;
+    const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
     const fileShareData = {
       title: shareData.title,
       text: "我的易經卜卦結果",
@@ -1391,7 +1391,7 @@ async function shareCurrentReading() {
       status.textContent = "圖片已複製，可直接貼到 LINE 對話框。";
     } else {
       downloadBlob(blob, filename);
-      status.textContent = "此瀏覽器不能直接複製圖片，已下載 PNG，可拖到 LINE 傳送。";
+      status.textContent = "此瀏覽器不能直接複製圖片，已下載 JPG，可拖到 LINE 傳送。";
     }
   } catch (error) {
     if (error?.name === "AbortError") {
