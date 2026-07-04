@@ -1383,6 +1383,88 @@ async function copyCurrentReadingLink() {
   $("#shareStatus").textContent = "連結已複製，朋友打開會看到同一卦。";
 }
 
+function publicSiteUrl() {
+  const fallback = "https://iching-oracle-pwa.vercel.app/";
+  try {
+    const { origin, pathname, hostname } = window.location;
+    if (!origin || hostname === "localhost" || hostname === "127.0.0.1") return fallback;
+    return new URL(pathname || "/", origin).href.replace(/[?#].*$/, "");
+  } catch {
+    return fallback;
+  }
+}
+
+function aiConversationMessages() {
+  let hasUserQuestion = false;
+  return state.aiMessages.filter((message) => {
+    if (message.role === "user") {
+      hasUserQuestion = true;
+      return true;
+    }
+    return hasUserQuestion && message.role === "assistant";
+  });
+}
+
+function buildAiConversationText() {
+  const conversation = aiConversationMessages();
+  if (conversation.length === 0) return "";
+
+  const reading = getCurrentReading();
+  const lines = ["易策玄占｜AI 解卦對話"];
+
+  if (reading) {
+    const fullReading = inflateReading(reading);
+    const domain = domainById(fullReading.domainId);
+    const hex = HEXAGRAM_BY_NO[fullReading.primaryNo];
+    const changed = HEXAGRAM_BY_NO[fullReading.changedNo];
+    const tri = trigramText(fullReading.primaryLines);
+    const moving = fullReading.moving.length ? `動爻：${fullReading.moving.join("、")}` : "動爻：無";
+
+    lines.push(
+      `時間：${formatDate(fullReading.createdAt)}`,
+      `問事方向：${domain.label}`,
+      `所問：${fullReading.question || "未填問題"}`,
+      `本卦：第 ${hex.no} 卦 ${hex.name}（${hex.theme}）`,
+      `卦象：${tri.label}`,
+      `${moving}`,
+      `變卦：第 ${changed.no} 卦 ${changed.name}（${changed.theme}）`
+    );
+  } else {
+    lines.push("狀態：尚未完成起卦，以下為起卦前補充對話。");
+  }
+
+  lines.push("", "AI 追問紀錄");
+  conversation.forEach((message, index) => {
+    const label = message.role === "user" ? "客戶" : "AI 解卦";
+    lines.push(`${index + 1}. ${label}：${String(message.content || "").trim()}`);
+  });
+  lines.push("", `由 易策玄占產生：${publicSiteUrl()}`);
+
+  return lines.join("\n");
+}
+
+function updateAiConversationButton() {
+  const button = $("#copyAiConversationButton");
+  if (!button) return;
+  button.disabled = aiConversationMessages().length === 0;
+}
+
+async function copyAiConversation() {
+  const text = buildAiConversationText();
+  const status = $("#aiStatus");
+  if (!text) {
+    status.textContent = "還沒有可複製的 AI 對話。";
+    return;
+  }
+  try {
+    await copyText(text);
+    status.textContent = "AI 對話已複製，可直接貼到 LINE、FB 或傳給朋友。";
+  } catch (error) {
+    console.warn("Unable to copy AI conversation.", error);
+    status.textContent = "複製失敗，請再試一次。";
+  }
+}
+
 function getAiEndpoint() {
   let storedEndpoint = "";
   try {
@@ -1832,6 +1914,7 @@ function renderAiMessages() {
     })
     .join("");
   panel.scrollTop = panel.scrollHeight;
+  updateAiConversationButton();
 }
 
 function addAiMessage(role, content) {
@@ -2212,6 +2295,7 @@ function setupEvents() {
   $("#memberButton").addEventListener("click", openMemberDialog);
   $("#memberCheckoutForm").addEventListener("submit", handleMemberCheckoutSubmit);
   $("#memberLineButton").addEventListener("click", handleMemberLineContact);
+  $("#copyAiConversationButton").addEventListener("click", copyAiConversation);
   $("#dailyPostGenerateButton").addEventListener("click", () => renderDailyFortunePost(true));
   $("#dailyPostCopyButton").addEventListener("click", copyDailyFortunePost);
   $("#shareResultButton").addEventListener("click", shareCurrentReading);

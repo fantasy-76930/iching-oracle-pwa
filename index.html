@@ -117,6 +117,15 @@
             <button class="member-button" id="memberButton" type="button">會員方案</button>
           </div>
           <div class="ai-messages" id="aiMessages" role="log" aria-live="polite"></div>
+          <div class="ai-tools" aria-label="AI 對話工具">
+            <button class="share-button ai-copy-button" id="copyAiConversationButton" type="button" disabled>
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M8 8h10v12H8z" />
+                <path d="M6 16H5a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1" />
+              </svg>
+              <span>複製對話</span>
+            </button>
+          </div>
           <form class="ai-form" id="aiForm">
             <label class="sr-only" for="aiQuestion">追問內容</label>
             <textarea id="aiQuestion" rows="2" maxlength="220" placeholder="補充想追問的事"></textarea>

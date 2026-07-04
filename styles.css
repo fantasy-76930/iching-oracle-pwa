@@ -407,6 +407,23 @@ h1 {
   color: #f5fff9;
 }
 
+.ai-tools {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: -2px;
+}
+
+.ai-copy-button {
+  min-width: 128px;
+  min-height: 40px;
+  padding: 0 13px;
+  border-color: rgba(31, 176, 136, 0.34);
+  color: #e8fff3;
+  background:
+    linear-gradient(180deg, rgba(31, 176, 136, 0.16), transparent),
+    rgba(5, 22, 19, 0.82);
+}
+
 .ai-form {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 54px;
@@ -1854,6 +1871,14 @@ input::placeholder {
 
   .ai-message {
     max-width: 100%;
+  }
+
+  .ai-tools {
+    justify-content: stretch;
+  }
+
+  .ai-copy-button {
+    width: 100%;
   }
 
   .ai-form {
