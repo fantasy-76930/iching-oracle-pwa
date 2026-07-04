@@ -1114,8 +1114,8 @@ function encodeCanvasBlob(canvas, type, quality) {
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
-async function canvasToBlob(canvas, type = "image/jpeg", quality = 0.86, maxBytes = 96000) {
-  const qualities = [quality, 0.8, 0.74, 0.68, 0.62, 0.56];
+async function canvasToBlob(canvas, type = "image/jpeg", quality = 0.76, maxBytes = 86000) {
+  const qualities = [quality, 0.7, 0.64, 0.58, 0.52, 0.46];
   let smallest = null;
 
   for (const currentQuality of qualities) {
@@ -1221,7 +1221,7 @@ function drawHexagramCanvas(ctx, lines, moving, x, y, width, lineHeight, gap) {
 async function createReadingImageBlob(reading) {
   const width = 1080;
   const height = 1350;
-  const outputScale = 2 / 3;
+  const outputScale = 5 / 9;
   const canvas = document.createElement("canvas");
   canvas.width = Math.round(width * outputScale);
   canvas.height = Math.round(height * outputScale);
@@ -1482,10 +1482,10 @@ async function shareCurrentReading() {
     if (!blob) {
       throw new Error("Unable to generate image");
     }
-    const filename = `易策玄占-${HEXAGRAM_BY_NO[reading.primaryNo].name}.jpg`;
+    const filename = `易策玄占-${HEXAGRAM_BY_NO[reading.primaryNo].name}_compressed.jpg`;
     const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
     const fileShareData = {
-      title: shareData.title,
+      title: `${shareData.title}_compressed`,
       text: "我的易經卜卦結果",
       files: [file]
     };
