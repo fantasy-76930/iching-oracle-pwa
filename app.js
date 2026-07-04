@@ -1020,8 +1020,22 @@ function loadCanvasImage(src) {
   });
 }
 
-function canvasToBlob(canvas, type = "image/jpeg", quality = 0.92) {
+function encodeCanvasBlob(canvas, type, quality) {
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
+}
+
+async function canvasToBlob(canvas, type = "image/jpeg", quality = 0.86, maxBytes = 96000) {
+  const qualities = [quality, 0.8, 0.74, 0.68, 0.62, 0.56];
+  let smallest = null;
+
+  for (const currentQuality of qualities) {
+    const blob = await encodeCanvasBlob(canvas, type, currentQuality);
+    if (!blob) continue;
+    if (!smallest || blob.size < smallest.size) smallest = blob;
+    if (blob.size <= maxBytes) return blob;
+  }
+
+  return smallest;
 }
 
 function wrapCanvasText(ctx, text, maxWidth, maxLines = 4) {
@@ -1117,10 +1131,12 @@ function drawHexagramCanvas(ctx, lines, moving, x, y, width, lineHeight, gap) {
 async function createReadingImageBlob(reading) {
   const width = 1080;
   const height = 1350;
+  const outputScale = 2 / 3;
   const canvas = document.createElement("canvas");
-  canvas.width = width;
-  canvas.height = height;
+  canvas.width = Math.round(width * outputScale);
+  canvas.height = Math.round(height * outputScale);
   const ctx = canvas.getContext("2d");
+  ctx.scale(outputScale, outputScale);
   const hex = HEXAGRAM_BY_NO[reading.primaryNo];
   const changed = HEXAGRAM_BY_NO[reading.changedNo];
   const domain = domainById(reading.domainId);
