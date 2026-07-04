@@ -1,8 +1,6 @@
 name: Deploy to GitHub Pages
 
 on:
-  push:
-    branches: ["main"]
   workflow_dispatch:
 
 permissions:
@@ -16,6 +14,8 @@ concurrency:
 
 jobs:
   deploy:
+    env:
+      ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: true
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -29,10 +29,16 @@ jobs:
         with:
           enablement: true
 
+      - name: Prepare static site
+        run: |
+          mkdir _site
+          cp index.html styles.css app.js ai-config.js manifest.webmanifest sw.js robots.txt .nojekyll _site/
+          cp -R assets _site/assets
+
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "."
+          path: "_site"
 
       - name: Deploy to GitHub Pages
         id: deployment
