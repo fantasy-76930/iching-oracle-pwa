@@ -33,8 +33,8 @@ function clampText(text, max = MAX_MESSAGE_LENGTH) {
   return String(text || "").replace(/\s+/g, " ").trim().slice(0, max);
 }
 
-function cleanList(items) {
-  return Array.isArray(items) ? items.map((item) => clampText(item, 80)).filter(Boolean).slice(0, 8) : [];
+function cleanList(items, max = 80) {
+  return Array.isArray(items) ? items.map((item) => clampText(item, max)).filter(Boolean).slice(0, 8) : [];
 }
 
 function normalizeReading(reading) {
@@ -42,6 +42,7 @@ function normalizeReading(reading) {
   const primary = reading.primary || {};
   const changed = reading.changed || {};
   const domain = reading.domain || {};
+  const domainInterpretation = reading.domainInterpretation || {};
 
   return {
     question: clampText(reading.question, 220),
@@ -64,6 +65,12 @@ function normalizeReading(reading) {
       name: clampText(changed.name, 20),
       theme: clampText(changed.theme, 40),
       summary: clampText(changed.summary, 180)
+    },
+    domainInterpretation: {
+      situation: clampText(domainInterpretation.situation, 260),
+      action: clampText(domainInterpretation.action, 220),
+      caution: clampText(domainInterpretation.caution, 220),
+      moving: cleanList(domainInterpretation.moving, 220)
     },
     moving: cleanList(reading.moving),
     lineValues: cleanList(reading.lineValues),
@@ -232,6 +239,10 @@ function buildPrompts(payload) {
       `宜避：${reading.primary.caution}`,
       `變卦：第 ${reading.changed.no || "?"} 卦 ${reading.changed.name}，${reading.changed.theme}`,
       `動爻：${reading.moving.length ? reading.moving.join("、") : "無動爻"}`,
+      `問事方向解讀：${reading.domainInterpretation.situation || "未提供"}`,
+      `方向宜行：${reading.domainInterpretation.action || "未提供"}`,
+      `方向宜避：${reading.domainInterpretation.caution || "未提供"}`,
+      `動爻方向細節：${reading.domainInterpretation.moving.length ? reading.domainInterpretation.moving.join(" / ") : "未提供"}`,
       `上下卦：${reading.trigram || "未提供"}`
     ].join("\n")
     : "卦象尚未完成。";

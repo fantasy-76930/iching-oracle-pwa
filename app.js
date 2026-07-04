@@ -252,6 +252,73 @@ const LINE_VALUE = {
   9: { label: "老陽", nature: "陽極轉陰", moving: true }
 };
 
+const DOMAIN_READING_RULES = {
+  love: {
+    lens: "看彼此回應、信任、界線與承諾是否對得上",
+    core: "不要只問有沒有緣分，要看相處中誰在靠近、誰在退後，以及關係能不能被清楚安放",
+    action: "先用一句真話確認對方態度，再看行動是否跟得上",
+    caution: "不要把焦慮當直覺，也不要用試探換安全感",
+    lineLens: "關係位置",
+    noMoving: "感情無動爻時，局勢多半不是立刻翻盤，而是要看現有互動能不能持續穩住"
+  },
+  career: {
+    lens: "看職責、資源、上司同事、交付成果與升遷時機",
+    core: "不要只看機會大不大，要看權責是否對等，資源是否到位，做了之後誰承擔結果",
+    action: "把目標、期限、責任與可交付成果先寫清楚",
+    caution: "不要被聲勢或人情推著走，職場最怕權責模糊",
+    lineLens: "職場位置",
+    noMoving: "事業無動爻時，先守住目前節奏，把基本盤做穩，再等更明確的外部訊號"
+  },
+  wealth: {
+    lens: "看現金流、成本、風險、回收速度與可承受損失",
+    core: "財運不是只看會不會賺，而是看這筆財是否穩、能不能收回、風險是不是被看見",
+    action: "先算最壞情況與回收時間，再決定投入多少",
+    caution: "不要急利、重押、借錢追高，也不要相信沒有驗證的消息",
+    lineLens: "財務節點",
+    noMoving: "財運無動爻時，先守財與整理帳務，短期不宜為了刺激而加大風險"
+  },
+  health: {
+    lens: "看壓力來源、作息節奏、身體警訊與可持續照護",
+    core: "健康卦不替代診斷，而是提醒你哪裡過度消耗，該先恢復秩序",
+    action: "把睡眠、飲食、檢查與減壓排成可執行的小步驟",
+    caution: "不要硬撐，也不要把卦象當成醫療判斷",
+    lineLens: "身心層次",
+    noMoving: "健康無動爻時，重點在穩定日常，不宜忽略已經反覆出現的小警訊"
+  },
+  study: {
+    lens: "看基礎、方法、考期、專注力與是否有正確老師",
+    core: "學業成敗不只看聰明，而是看有沒有把基本功拆小、反覆驗收",
+    action: "把目標拆成今日可完成的題量、章節或練習",
+    caution: "不要一直換方法，卻沒有累積足夠練習",
+    lineLens: "學習階段",
+    noMoving: "學業無動爻時，代表路線暫時不必大改，重點是把原本該做的練熟"
+  },
+  people: {
+    lens: "看信任、距離、利益牽連、話語分寸與是否值得往來",
+    core: "人際不是看誰對誰錯而已，要看這段往來會讓你更穩，還是更消耗",
+    action: "先用事實和界線說話，不急著討好或翻臉",
+    caution: "不要被情緒、八卦或義氣拉進別人的局",
+    lineLens: "人際距離",
+    noMoving: "人際無動爻時，先維持禮貌距離，不必急著把關係推近或切斷"
+  },
+  home: {
+    lens: "看家庭角色、居住秩序、長輩晚輩、內部規矩與安全感",
+    core: "家宅之問重在內部是否安定，誰的責任不清、誰的情緒被壓住，都會影響外部運勢",
+    action: "先整理家中規矩、金錢分工與照顧責任",
+    caution: "不要用情緒處理長期結構問題，也不要讓沉默變成默許",
+    lineLens: "家中位置",
+    noMoving: "家宅無動爻時，先安內，不急著大搬動或大改變"
+  },
+  decision: {
+    lens: "看時機、代價、退路、風險承擔與第一步是否可逆",
+    core: "決策不是問哪個選項一定贏，而是看哪個方向代價可承受、退路清楚、能逐步驗證",
+    action: "先做最小可行一步，保留退路，再用結果修正方向",
+    caution: "不要把衝動當天命，也不要因為害怕而永遠不選",
+    lineLens: "決策關卡",
+    noMoving: "決策無動爻時，表示暫時先按現有資訊穩定推進，不宜突然翻桌重來"
+  }
+};
+
 const FREE_DAILY_AI_LIMIT = 3;
 const MEMBER_STORAGE_KEY = "iching-member";
 const DAILY_ZODIAC_SIGNS = ["鼠", "牛", "虎", "兔", "龍", "蛇", "馬", "羊", "猴", "雞", "狗", "豬"];
@@ -702,25 +769,48 @@ function domainById(id) {
   return DOMAINS.find((domain) => domain.id === id) || DOMAINS[0];
 }
 
+function domainRule(domainId) {
+  return DOMAIN_READING_RULES[domainId] || DOMAIN_READING_RULES.career;
+}
+
 function getDomainReading(hex, domainId) {
   const domain = domainById(domainId);
-  return `以「${domain.scope}」看 ${hex.name}，卦意落在「${hex.theme}」。此問先抓 ${domain.lineFocus}，再用「${hex.keywords.join("、")}」判斷深淺；目前宜${hex.action}。`;
+  const rule = domainRule(domainId);
+  return `以「${domain.scope}」看 ${hex.name}，不是只看卦名吉凶，而是${rule.lens}。本卦主題是「${hex.theme}」，落到${domain.label}時，重點變成：${rule.core}。可用「${hex.keywords.join("、")}」判斷這件事目前的深淺。`;
 }
 
 function getActionReading(hex, domainId) {
   const domain = domainById(domainId);
+  const rule = domainRule(domainId);
   const healthNote = domainId === "health" ? "若有明顯不適，仍以專業檢查為準；" : "";
-  return `${healthNote}${domain.action}；套入本卦，重點是${hex.action}。可先做一個小而明確的行動，再觀察回應。`;
+  return `${healthNote}${rule.action}。套入本卦，重點是${hex.action}；再接上「${domain.action}」。先做一個小而明確的行動，再觀察對方、環境或身體的回應。`;
 }
 
 function getCautionReading(hex, domainId) {
   const domain = domainById(domainId);
-  return `${domain.caution}；本卦特別忌「${hex.caution}」。若局勢不回應，先縮小問題，不要把全部籌碼押上。`;
+  const rule = domainRule(domainId);
+  return `${rule.caution}；本卦特別忌「${hex.caution}」。同時也要記住：${domain.caution}。若局勢不回應，先縮小問題，不要把全部籌碼押上。`;
 }
 
 function getDomainSnippet(hex, domainId) {
   const domain = domainById(domainId);
-  return `${domain.label}看「${hex.theme}」：先察 ${domain.lineFocus}，宜${hex.action}。`;
+  const rule = domainRule(domainId);
+  return `${domain.label}看「${hex.theme}」：${rule.lens}，宜${hex.action}。`;
+}
+
+function movingLineInsight(line, hex, domain) {
+  const rule = domainRule(domain.id);
+  const stage = LINE_STAGES[line.position - 1];
+  const value = LINE_VALUE[line.value];
+  const turn = line.value === 9
+    ? "老陽表示這股力量已到高點，接下來要收斂、轉向或避免過度"
+    : "老陰表示原本隱伏的問題開始浮出，可以用柔中帶剛的方式處理";
+  const focus = `${rule.lineLens}：${stage.place}`;
+  const text = `${value.nature}，${turn}。在${domain.label}之問，這一爻先看「${focus}」，也就是${domain.lineFocus}是否已經出現變化。宜${stage.advice}，並把「${hex.action}」落到可執行的一步。`;
+  return {
+    title: `${stage.name} · ${value.label} · ${focus}`,
+    text
+  };
 }
 
 function makeHexagramMark(lines, moving = []) {
@@ -789,13 +879,14 @@ function renderReading(reading) {
   $("#domainReading").textContent = getDomainReading(hex, reading.domainId);
   $("#actionReading").textContent = getActionReading(hex, reading.domainId);
   $("#cautionReading").textContent = getCautionReading(hex, reading.domainId);
+  setInitialAiReadingResult("");
   $("#movingLines").innerHTML = renderMovingLines(reading, hex, domain);
   $("#changedWrap").innerHTML = renderChangedHexagram(reading, changed);
   $("#processLog").innerHTML = renderProcess(reading);
   $("#shareStatus").textContent = "";
   state.lastReading = reading;
   result.dataset.readingId = reading.id;
-  syncAiOpeningWithReading(reading);
+  resetAiForReading(reading);
   updateAiMode();
 
   result.hidden = false;
@@ -804,16 +895,15 @@ function renderReading(reading) {
 
 function renderMovingLines(reading, hex, domain) {
   if (reading.moving.length === 0) {
-    return `<p>無動爻。此卦以本卦為主，先照「${hex.theme}」穩定處理，不急著轉向。</p>`;
+    const rule = domainRule(domain.id);
+    return `<p>無動爻。此卦以本卦為主，先照「${hex.theme}」穩定處理，不急著轉向。放在${domain.label}之問，${rule.noMoving}。</p>`;
   }
 
   const items = reading.castLines
     .filter((line) => LINE_VALUE[line.value].moving)
     .map((line) => {
-      const stage = LINE_STAGES[line.position - 1];
-      const value = LINE_VALUE[line.value];
-      const turn = line.value === 9 ? "由盛轉收" : "由伏轉發";
-      return `<div class="moving-item"><strong>${stage.name} · ${value.label}</strong><p>${value.nature}，此處是「${stage.place}」。在${domain.label}之問，先看${domain.lineFocus}；${turn}，宜${stage.advice}，並把「${hex.action}」做得更精準。</p></div>`;
+      const insight = movingLineInsight(line, hex, domain);
+      return `<div class="moving-item"><strong>${insight.title}</strong><p>${insight.text}</p></div>`;
     })
     .join("");
 
@@ -1559,12 +1649,26 @@ function updateAiMode() {
   badge.textContent = "待起卦";
 }
 
-function syncAiOpeningWithReading(reading) {
-  if (state.aiMessages.length !== 1 || state.aiMessages[0].role !== "assistant") return;
+function resetAiForReading(reading) {
   const hex = HEXAGRAM_BY_NO[reading.primaryNo];
-  if (!hex) return;
-  state.aiMessages[0].content = `此卦已成：${hex.name}。後續只依同一卦追問，不另起新卦。`;
+  state.aiMessages = [
+    {
+      role: "assistant",
+      content: hex
+        ? `此卦已成：${hex.name}。後續只依同一卦追問，不另起新卦。`
+        : "此卦已成。後續只依同一卦追問，不另起新卦。"
+    }
+  ];
   renderAiMessages();
+}
+
+function setInitialAiReadingResult(text) {
+  const panel = $("#initialAiReadingPanel");
+  const output = $("#initialAiReadingText");
+  if (!panel || !output) return;
+  const content = String(text || "").trim();
+  panel.hidden = !content;
+  output.textContent = content;
 }
 
 function taipeiDateKey() {
@@ -1985,6 +2089,9 @@ function readingForAi(reading) {
   const movingLines = fullReading.castLines
     .filter((line) => LINE_VALUE[line.value]?.moving)
     .map((line) => `${LINE_STAGES[line.position - 1].name} ${LINE_VALUE[line.value].label}`);
+  const movingInsights = fullReading.castLines
+    .filter((line) => LINE_VALUE[line.value]?.moving)
+    .map((line) => movingLineInsight(line, primary, domain).text);
 
   return {
     question: fullReading.question,
@@ -2009,6 +2116,12 @@ function readingForAi(reading) {
       summary: changed.summary
     },
     moving: movingLines,
+    domainInterpretation: {
+      situation: getDomainReading(primary, fullReading.domainId),
+      action: getActionReading(primary, fullReading.domainId),
+      caution: getCautionReading(primary, fullReading.domainId),
+      moving: movingInsights
+    },
     lineValues: fullReading.castLines.map((line) => `${line.position}:${line.value}`),
     trigram: trigramText(fullReading.primaryLines).label
   };
@@ -2078,6 +2191,68 @@ async function requestAiReply(payload) {
     };
   } finally {
     clearTimeout(timeout);
+  }
+}
+
+function initialAiMessage(reading) {
+  const fullReading = inflateReading(reading);
+  const domain = domainById(fullReading.domainId);
+  const hex = HEXAGRAM_BY_NO[fullReading.primaryNo];
+  const changed = HEXAGRAM_BY_NO[fullReading.changedNo];
+  const moving = fullReading.moving.length ? `動爻在第 ${fullReading.moving.join("、")} 爻` : "無動爻";
+  return [
+    `請針對我一開始的問題「${fullReading.question}」做第一次完整解卦。`,
+    `請用${domain.label}角度回答，不要泛泛講卦。`,
+    `本卦是${hex.name}，${moving}，變卦是${changed.name}。`,
+    "請說明現在局勢、關鍵爻位、可行做法、需要避開的事，語氣自然口語。"
+  ].join(" ");
+}
+
+async function requestInitialAiReading(reading) {
+  const question = String(reading?.question || "").trim();
+  if (!question || state.isAiBusy) return;
+
+  if (!canUseAiQuota()) {
+    $("#aiStatus").textContent = "今日免費 AI 次數已用完。";
+    openMemberDialog();
+    return;
+  }
+
+  const conversation = state.aiMessages.slice(-8);
+  addAiMessage("user", `所問之事：${question}`);
+  setAiBusy(true);
+  $("#aiStatus").textContent = "正在用 AI 進行第一次解卦，本次會計入今日 AI 次數...";
+  setInitialAiReadingResult("AI 正在依照你的問題、本卦、動爻與變卦做第一次解讀...");
+
+  try {
+    const result = await requestAiReply({
+      phase: "reading",
+      message: initialAiMessage(reading),
+      reading: readingForAi(reading),
+      conversation,
+      member: {
+        id: state.member?.id,
+        plan: state.member?.plan || "free",
+        quotaDate: state.member?.quotaDate
+      }
+    });
+    if (result.quota) {
+      applyRemoteQuota(result.quota);
+    } else if (result.usedRemoteAi) {
+      consumeAiQuota();
+    }
+    if (result.limitReached) openMemberDialog();
+    addAiMessage("assistant", result.reply);
+    setInitialAiReadingResult(result.reply);
+  } catch (error) {
+    console.warn("Unable to request initial AI reading.", error);
+    $("#aiStatus").textContent = "AI 暫時沒有接通，先用卦典摘要回覆。";
+    const fallbackReply = localAiReply(question, reading);
+    addAiMessage("assistant", fallbackReply);
+    setInitialAiReadingResult(fallbackReply);
+  } finally {
+    setAiBusy(false);
+    updateAiMode();
   }
 }
 
@@ -2308,6 +2483,7 @@ function setupEvents() {
     if (state.isCasting) return;
     state.isCasting = true;
     const question = $("#question").value.trim();
+    let completedReading = null;
     const castButton = $("#castButton");
     const clearButton = $("#clearButton");
     castButton.disabled = true;
@@ -2321,12 +2497,16 @@ function setupEvents() {
       hideCastingPanel();
       renderReading(reading);
       saveReading(reading);
+      completedReading = reading;
     } finally {
       state.isCasting = false;
       castButton.disabled = false;
       clearButton.disabled = false;
       castButton.querySelector("span").textContent = "籌策起卦";
       updateAiMode();
+    }
+    if (completedReading?.question) {
+      requestInitialAiReading(completedReading);
     }
   });
 
