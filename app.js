@@ -1028,26 +1028,35 @@ function wrapCanvasText(ctx, text, maxWidth, maxLines = 4) {
   const source = String(text || "");
   const paragraphs = source.split("\n");
   const lines = [];
+  let truncated = false;
 
-  for (const paragraph of paragraphs) {
+  for (let paragraphIndex = 0; paragraphIndex < paragraphs.length; paragraphIndex += 1) {
+    const paragraph = paragraphs[paragraphIndex];
     let current = "";
     for (const char of paragraph) {
       const next = current + char;
       if (ctx.measureText(next).width > maxWidth && current) {
         lines.push(current);
         current = char;
-        if (lines.length === maxLines) break;
+        if (lines.length === maxLines) {
+          truncated = true;
+          break;
+        }
       } else {
         current = next;
       }
     }
     if (lines.length === maxLines) break;
     if (current) lines.push(current);
+    if (lines.length === maxLines && paragraphIndex < paragraphs.length - 1) {
+      truncated = true;
+      break;
+    }
   }
 
   if (lines.length > maxLines) lines.length = maxLines;
-  if (lines.length === maxLines && ctx.measureText(lines[lines.length - 1]).width > maxWidth) {
-    let last = lines[lines.length - 1];
+  if (truncated && lines.length) {
+    let last = lines[lines.length - 1].replace(/…$/, "");
     while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) {
       last = last.slice(0, -1);
     }
@@ -1152,18 +1161,21 @@ async function createReadingImageBlob(reading) {
 
   const icon = await loadCanvasImage("./assets/icon-192.png");
   if (icon) {
+    const iconSize = 168;
+    const iconX = (width - iconSize) / 2;
+    const iconY = 76;
     ctx.save();
-    roundRectPath(ctx, 438, 80, 204, 204, 42);
+    roundRectPath(ctx, iconX, iconY, iconSize, iconSize, 34);
     ctx.clip();
-    ctx.drawImage(icon, 438, 80, 204, 204);
+    ctx.drawImage(icon, iconX, iconY, iconSize, iconSize);
     ctx.restore();
     ctx.strokeStyle = "rgba(247, 218, 136, 0.92)";
     ctx.lineWidth = 4;
-    roundRectPath(ctx, 438, 80, 204, 204, 42);
+    roundRectPath(ctx, iconX, iconY, iconSize, iconSize, 34);
     ctx.stroke();
   }
 
-  roundRectPath(ctx, 188, 316, width - 376, 164, 32);
+  roundRectPath(ctx, 178, 278, width - 356, 150, 30);
   ctx.fillStyle = "rgba(0, 8, 7, 0.7)";
   ctx.fill();
   ctx.strokeStyle = "rgba(232, 189, 98, 0.5)";
@@ -1178,37 +1190,38 @@ async function createReadingImageBlob(reading) {
   ctx.fillStyle = "#fff7da";
   ctx.strokeStyle = "rgba(0, 0, 0, 0.92)";
   ctx.lineWidth = 8;
-  ctx.font = '900 74px "Noto Serif TC", "Microsoft JhengHei", serif';
-  ctx.strokeText(hex.name, width / 2, 380);
-  ctx.fillText(hex.name, width / 2, 380);
+  ctx.font = '900 68px "Noto Serif TC", "Microsoft JhengHei", serif';
+  ctx.strokeText(hex.name, width / 2, 346);
+  ctx.fillText(hex.name, width / 2, 346);
   ctx.fillStyle = "#ffd978";
   ctx.strokeStyle = "rgba(0, 0, 0, 0.75)";
   ctx.lineWidth = 5;
-  ctx.font = '700 42px "Noto Serif TC", "Microsoft JhengHei", serif';
-  ctx.strokeText(hex.theme, width / 2, 440);
-  ctx.fillText(hex.theme, width / 2, 440);
+  ctx.font = '700 38px "Noto Serif TC", "Microsoft JhengHei", serif';
+  ctx.strokeText(hex.theme, width / 2, 400);
+  ctx.fillText(hex.theme, width / 2, 400);
   ctx.restore();
 
-  drawHexagramCanvas(ctx, reading.primaryLines, reading.moving, 398, 500, 284, 24, 18);
+  drawHexagramCanvas(ctx, reading.primaryLines, reading.moving, 398, 462, 284, 22, 14);
 
-  roundRectPath(ctx, 164, 650, width - 328, 116, 24);
-  ctx.fillStyle = "rgba(0, 8, 7, 0.68)";
+  roundRectPath(ctx, 150, 704, width - 300, 104, 24);
+  ctx.fillStyle = "rgba(0, 8, 7, 0.82)";
   ctx.fill();
   ctx.strokeStyle = "rgba(232, 189, 98, 0.34)";
   ctx.lineWidth = 2;
   ctx.stroke();
 
   ctx.fillStyle = "#f6e6b7";
-  ctx.font = '700 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  ctx.fillText(`第 ${hex.no} 卦 · ${domain.label} · ${moving}`, width / 2, 696);
+  ctx.font = '750 29px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText(`第 ${hex.no} 卦 · ${domain.label} · ${moving}`, width / 2, 746);
   ctx.fillStyle = "#d9f4df";
-  ctx.fillText(`變卦：第 ${changed.no} 卦 ${changed.name}`, width / 2, 740);
+  ctx.font = '750 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  ctx.fillText(`變卦：第 ${changed.no} 卦 ${changed.name}`, width / 2, 782);
 
   ctx.save();
   ctx.shadowColor = "rgba(0, 0, 0, 0.55)";
   ctx.shadowBlur = 26;
   ctx.shadowOffsetY = 12;
-  roundRectPath(ctx, 82, 790, width - 164, 410, 30);
+  roundRectPath(ctx, 82, 832, width - 164, 378, 30);
   ctx.fillStyle = "rgba(1, 9, 8, 0.94)";
   ctx.fill();
   ctx.restore();
@@ -1219,22 +1232,22 @@ async function createReadingImageBlob(reading) {
   ctx.textAlign = "left";
   ctx.fillStyle = "#ffd978";
   ctx.font = '800 32px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  ctx.fillText("所問", 128, 850);
+  ctx.fillText("所問", 128, 888);
   ctx.fillStyle = "#ffffff";
   ctx.font = '700 34px "Noto Serif TC", "Microsoft JhengHei", serif';
   const question = reading.question || "未填問題";
-  let nextY = drawWrappedText(ctx, question, 128, 900, 824, 46, 2);
+  let nextY = drawWrappedText(ctx, question, 128, 930, 824, 42, 2);
 
   ctx.fillStyle = "#ffd978";
   ctx.font = '800 32px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  ctx.fillText("解讀", 128, nextY + 34);
+  ctx.fillText("解讀", 128, nextY + 30);
   ctx.fillStyle = "#fff2ce";
-  ctx.font = '650 31px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  nextY = drawWrappedText(ctx, hex.summary, 128, nextY + 82, 824, 42, 3);
+  ctx.font = '650 30px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  nextY = drawWrappedText(ctx, hex.summary, 128, nextY + 76, 824, 39, 2);
 
   ctx.fillStyle = "#84f0bd";
-  ctx.font = '800 29px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  drawWrappedText(ctx, `宜行：${hex.action}`, 128, nextY + 28, 824, 38, 2);
+  ctx.font = '800 28px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
+  drawWrappedText(ctx, `宜行：${hex.action}`, 128, nextY + 32, 824, 36, 1);
 
   ctx.textAlign = "center";
   ctx.fillStyle = "#e8bd62";
@@ -1242,7 +1255,7 @@ async function createReadingImageBlob(reading) {
   ctx.fillText("易策玄占 · 線上易經卜卦", width / 2, 1250);
   ctx.fillStyle = "#cbbf9b";
   ctx.font = '500 24px "Noto Sans TC", "Microsoft JhengHei", sans-serif';
-  ctx.fillText("fantasy-76930.github.io/iching-oracle-pwa", width / 2, 1288);
+  ctx.fillText("iching-oracle-pwa.vercel.app", width / 2, 1288);
 
   return canvasToBlob(canvas);
 }
