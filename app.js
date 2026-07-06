@@ -1114,15 +1114,31 @@ function encodeCanvasBlob(canvas, type, quality) {
   return new Promise((resolve) => canvas.toBlob(resolve, type, quality));
 }
 
-async function canvasToBlob(canvas, type = "image/jpeg", quality = 0.76, maxBytes = 86000) {
-  const qualities = [quality, 0.7, 0.64, 0.58, 0.52, 0.46];
+function scaleCanvasForShare(sourceCanvas, scale) {
+  if (scale >= 0.999) return sourceCanvas;
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(sourceCanvas.width * scale));
+  canvas.height = Math.max(1, Math.round(sourceCanvas.height * scale));
+  const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.drawImage(sourceCanvas, 0, 0, canvas.width, canvas.height);
+  return canvas;
+}
+
+async function canvasToBlob(canvas, type = "image/jpeg", quality = 0.72, maxBytes = 68000) {
+  const qualities = [quality, 0.64, 0.56, 0.48, 0.4, 0.34, 0.28];
+  const scales = [1, 0.92, 0.84, 0.76];
   let smallest = null;
 
-  for (const currentQuality of qualities) {
-    const blob = await encodeCanvasBlob(canvas, type, currentQuality);
-    if (!blob) continue;
-    if (!smallest || blob.size < smallest.size) smallest = blob;
-    if (blob.size <= maxBytes) return blob;
+  for (const scale of scales) {
+    const workingCanvas = scaleCanvasForShare(canvas, scale);
+    for (const currentQuality of qualities) {
+      const blob = await encodeCanvasBlob(workingCanvas, type, currentQuality);
+      if (!blob) continue;
+      if (!smallest || blob.size < smallest.size) smallest = blob;
+      if (blob.size <= maxBytes) return blob;
+    }
   }
 
   return smallest;
@@ -1468,12 +1484,18 @@ async function copyImageBlob(blob) {
   }
 }
 
+function getShareImageFilename(reading) {
+  const hex = HEXAGRAM_BY_NO[reading.primaryNo];
+  const no = String(hex?.no || reading.primaryNo || "0").padStart(2, "0");
+  const date = new Date().toISOString().slice(0, 10).replace(/-/g, "");
+  return `iching-reading-${no}-${date}.jpg`;
+}
+
 async function shareCurrentReading() {
   const reading = getCurrentReading();
   if (!reading) return;
   const status = $("#shareStatus");
   const shareButton = $("#shareResultButton");
-  const shareData = getShareData(reading);
   status.textContent = "正在生成卦象圖片...";
   shareButton.disabled = true;
 
@@ -1482,11 +1504,9 @@ async function shareCurrentReading() {
     if (!blob) {
       throw new Error("Unable to generate image");
     }
-    const filename = `易策玄占-${HEXAGRAM_BY_NO[reading.primaryNo].name}_compressed.jpg`;
+    const filename = getShareImageFilename(reading);
     const file = new File([blob], filename, { type: blob.type || "image/jpeg" });
     const fileShareData = {
-      title: `${shareData.title}_compressed`,
-      text: "我的易經卜卦結果",
       files: [file]
     };
 
