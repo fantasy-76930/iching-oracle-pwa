@@ -1921,7 +1921,7 @@ function updateMemberUi() {
   const points = currentPointBalance();
   planLabel.textContent = planName;
   quotaText.textContent = points > 0
-    ? `今日剩餘 ${remaining} 次 · 點數 ${points} 次`
+    ? `今日剩餘 ${remaining} 次 · 服務包 ${points} 次`
     : `今日剩餘 ${remaining} 次`;
 }
 
@@ -1964,10 +1964,10 @@ function buildMemberApplicationText() {
     "易策玄占會員申請",
     `會員編號：${state.member.id}`,
     `目前方案：${planName}`,
-    "申請方案：月費會員",
+    "申請方案：AI 解卦服務或月費會員",
     `申請時間：${time}`,
     "需求：開通每日更多 AI 解卦次數",
-    "付款：請依 LINE 官方帳號提供的匯款資訊付款，並回傳後五碼"
+    "付款：請依客服提供的方式付款，並回傳訂單資訊"
   ].join("\n");
 }
 
@@ -1994,15 +1994,15 @@ async function handleMemberCheckoutSubmit(event) {
   prepareMemberCheckoutForm();
   const form = event.currentTarget;
   const status = $("#memberApplyStatus");
-  const product = event.submitter?.value === "points" ? "points" : "vip";
+  const product = event.submitter?.value === "service_pack" ? "service_pack" : "vip";
   if (!form.action) {
     event.preventDefault();
     status.textContent = "線上付款尚未設定，請先用 LINE 聯絡站主。";
     await handleMemberLineContact();
     return;
   }
-  status.textContent = product === "points"
-    ? "正在建立點數包訂單，準備前往付款頁..."
+  status.textContent = product === "service_pack"
+    ? "正在建立 AI 解卦服務包訂單，準備前往付款頁..."
     : "正在建立月費會員訂單，準備前往付款頁...";
 }
 

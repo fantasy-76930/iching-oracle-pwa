@@ -46,6 +46,7 @@
       <nav class="nav-pills" aria-label="主要區塊">
         <a href="#oracle">起卦</a>
         <a href="#guide">說明</a>
+        <a href="#fees">收費</a>
         <a href="#daily-post">貼文</a>
         <a href="#library">卦典</a>
         <a href="#version">版本</a>
@@ -316,10 +317,59 @@
             </div>
             <div>
               <strong>免費與會員</strong>
-              <p>每人每日可免費 AI 追問 3 次；需要更多解卦，可使用點數包或月費會員延伸詢問。</p>
+              <p>每人每日可免費 AI 追問 3 次；需要更多解卦，可使用 AI 解卦服務包或月費會員延伸詢問。</p>
             </div>
           </div>
         </details>
+      </section>
+
+      <section class="fees-section" id="fees">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow">服務與收費</p>
+            <h2>AI 解卦服務說明</h2>
+          </div>
+          <span class="guide-badge">線上數位服務</span>
+        </div>
+
+        <div class="fee-panel">
+          <div class="fee-contact">
+            <div>
+              <strong>營運方</strong>
+              <p>奇幻文創｜易策玄占</p>
+            </div>
+            <div>
+              <strong>客服 Email</strong>
+              <p><a href="mailto:0989593280iphone@gmail.com">0989593280iphone@gmail.com</a></p>
+            </div>
+          </div>
+
+          <div class="fee-grid">
+            <article class="fee-card">
+              <span>Free</span>
+              <h3>免費使用</h3>
+              <p>每日可使用 3 次 AI 解卦追問。若起卦時已填寫所問之事，系統會自動進行第一次 AI 初解，並計入今日使用次數。</p>
+              <strong>NT$0</strong>
+            </article>
+            <article class="fee-card">
+              <span>Service Pack</span>
+              <h3>AI 解卦服務包</h3>
+              <p>一次性購買 50 次 AI 文字解讀服務，可用於起卦後 AI 初解與後續追問。服務次數僅限本站使用，不可轉讓、兌現或提領。</p>
+              <strong>NT$99 / 50 次</strong>
+            </article>
+            <article class="fee-card">
+              <span>VIP</span>
+              <h3>月費會員</h3>
+              <p>適合經常使用者，每日可使用 30 次 AI 解卦追問。此方案需綠界信用卡定期定額服務審核通過後開放。</p>
+              <strong>NT$199 / 月</strong>
+            </article>
+          </div>
+
+          <p class="fee-note">
+            本服務為線上易經卜卦與 AI 文字解讀輔助，內容僅供生活參考，不取代醫療、法律、投資或其他專業建議。
+            若付款成功後未自動開通、重複扣款或訂單異常，請來信客服協助處理。
+          </p>
+        </div>
       </section>
 
       <section class="daily-post-section" id="daily-post">
@@ -416,7 +466,7 @@
           <article class="version-card">
             <span>04</span>
             <h3>會員與每日次數</h3>
-            <p>免費用戶每日 3 次 AI 詢問，另有點數包與 VIP 月費方案，付款後可自動開通或加點。</p>
+            <p>免費用戶每日 3 次 AI 詢問，另有 AI 解卦服務包與 VIP 月費方案，付款後可自動開通可用次數。</p>
           </article>
           <article class="version-card">
             <span>05</span>
@@ -435,7 +485,7 @@
           <div class="version-timeline">
             <div>
               <strong>v1.2</strong>
-              <p>加入卜卦說明、點數包、每日免費次數控管與 AI 即時追問解卦。</p>
+              <p>加入卜卦說明、AI 解卦服務包、每日免費次數控管與 AI 即時追問解卦。</p>
             </div>
             <div>
               <strong>v1.1</strong>
@@ -483,9 +533,9 @@
             <p>每日 3 次 AI 追問</p>
           </article>
           <article class="plan-card">
-            <span>Points</span>
-            <strong>點數包</strong>
-            <p>NT$99 / 50 次，依綠界可用方式付款</p>
+            <span>Service Pack</span>
+            <strong>AI 解卦服務包</strong>
+            <p>NT$99 / 50 次 AI 文字解讀服務</p>
           </article>
           <article class="plan-card">
             <span>VIP</span>
@@ -501,12 +551,12 @@
             <input id="memberEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
             <label for="memberLineName">LINE 顯示名稱</label>
             <input id="memberLineName" name="lineName" type="text" autocomplete="name" placeholder="方便付款後核對" />
-            <button class="member-apply-button" id="memberPointsButton" type="submit" name="product" value="points">
+            <button class="member-apply-button" id="memberPointsButton" type="submit" name="product" value="service_pack">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 3 4 7v6c0 4.8 3.4 7.3 8 8 4.6-.7 8-3.2 8-8V7l-8-4Z" />
                 <path d="M8 12h8M12 8v8" />
               </svg>
-              <span>購買點數包 NT$99 / 50 次</span>
+              <span>購買 AI 解卦服務包 NT$99 / 50 次</span>
             </button>
             <button class="member-apply-button" id="memberCheckoutButton" type="submit" name="product" value="vip">
               <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -523,7 +573,7 @@
             </svg>
             <span>需要協助，開啟 LINE</span>
           </button>
-          <p class="member-apply-status" id="memberApplyStatus" role="status">付款成功後會自動開通或加點；若月費付款失敗，請確認綠界已開通信用卡定期定額。</p>
+          <p class="member-apply-status" id="memberApplyStatus" role="status">付款成功後會自動開通可用次數；若月費付款失敗，請確認綠界已開通信用卡定期定額。</p>
         </div>
       </div>
     </dialog>

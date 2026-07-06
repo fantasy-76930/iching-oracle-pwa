@@ -171,7 +171,7 @@ function positiveInteger(value, fallback) {
 
 function checkoutProduct(payload) {
   const product = cleanText(payload.product || payload.productType || payload.plan, 20).toLowerCase();
-  return product === "points" ? "points" : "vip";
+  return ["points", "service_pack", "ai_pack"].includes(product) ? "points" : "vip";
 }
 
 function checkoutProductConfig(product) {
@@ -182,8 +182,8 @@ function checkoutProductConfig(product) {
       type: "points",
       amount,
       points,
-      tradeDesc: "易策玄占AI點數包",
-      itemName: `易策玄占 AI 點數包 ${points} 次`
+      tradeDesc: "易策玄占AI解卦服務包",
+      itemName: `易策玄占 AI 解卦服務包 ${points} 次`
     };
   }
 
@@ -317,7 +317,7 @@ async function handleMemberCheckout(rawPayload) {
     EncryptType: 1,
     CustomField1: memberId,
     CustomField2: email.slice(0, 100),
-    CustomField3: productConfig.type,
+    CustomField3: productConfig.type === "points" ? "ai_pack" : productConfig.type,
     CustomField4: productConfig.points ? String(productConfig.points) : ""
   };
   if (productConfig.type === "vip") {
@@ -348,7 +348,7 @@ async function activateMemberFromPayment(payload) {
   if (!member) return { ok: false, message: "Member not found" };
 
   const pendingOrder = member.pendingOrders?.[tradeNo] || {
-    type: cleanText(payload.CustomField3, 20) === "points" ? "points" : "vip",
+    type: ["points", "ai_pack"].includes(cleanText(payload.CustomField3, 20)) ? "points" : "vip",
     amount: Number(payload.TradeAmt || process.env.MEMBERSHIP_MONTHLY_AMOUNT || 0),
     points: Number(payload.CustomField4 || 0)
   };
@@ -389,7 +389,7 @@ async function activateMemberFromPayment(payload) {
   if (member.pendingOrders) delete member.pendingOrders[tradeNo];
   member.updatedAt = now;
   await saveMember(member);
-  const productName = pendingOrder.type === "points" ? "點數包" : "月費會員";
+  const productName = pendingOrder.type === "points" ? "AI解卦服務包" : "月費會員";
   await notifyLineOwner(`${paid ? "會員付款成功" : "會員付款未完成"}\n項目：${productName}\n會員：${member.email}\n會員編號：${member.id}\n交易：${tradeNo}`);
 
   return { ok: true, paid, member };

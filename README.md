@@ -73,7 +73,7 @@ AI 解卦：
 - `POINTS_PACK_AMOUNT`，可選，預設 99
 - `POINTS_PACK_CREDITS`，可選，預設 50
 - `VIP_DAILY_AI_LIMIT`，可選，預設 30
-- `ECPAY_CHOOSE_PAYMENT`，可選；不設定時，點數包使用 `ALL`，月費會員使用 `Credit`
+- `ECPAY_CHOOSE_PAYMENT`，可選；不設定時，AI 解卦服務包使用 `ALL`，月費會員使用 `Credit`
 - `PUBLIC_SITE_URL`，正式站網址
 - `PUBLIC_API_BASE_URL`，Vercel API 網址
 
@@ -83,7 +83,7 @@ AI 解卦：
 - 定期定額每期通知：`https://iching-oracle-pwa.vercel.app/api/ecpay-return`
 - 使用者付款完成頁：`https://iching-oracle-pwa.vercel.app/api/ecpay-result`
 
-注意：綠界後台的模擬付款通知不會開通 VIP，只有正式付款成功才會把會員狀態改為 VIP。月費會員使用定期定額，商店需先在綠界開通信用卡與定期定額服務；點數包會使用商店已開通的一般付款方式。
+注意：綠界後台的模擬付款通知不會開通 VIP，只有正式付款成功才會把會員狀態改為 VIP。月費會員使用定期定額，商店需先在綠界開通信用卡與定期定額服務；AI 解卦服務包會使用商店已開通的一般付款方式。
 
 LINE 通知，使用 LINE Messaging API：
 
