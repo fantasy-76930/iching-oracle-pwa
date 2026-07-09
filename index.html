@@ -334,7 +334,7 @@
             </div>
             <div>
               <strong>免費與會員</strong>
-              <p>每人每日可免費 AI 追問 3 次；需要更多解卦，可使用 AI 解卦服務包或月費會員延伸詢問。</p>
+              <p>每人每日可免費 AI 追問 3 次；需要更多解卦，可申請月費會員延伸詢問。</p>
             </div>
           </div>
         </details>
@@ -356,7 +356,7 @@
               <p>奇幻文創｜易策玄占</p>
             </div>
             <div>
-              <strong>客服 Email</strong>
+              <strong>客服與審核聯絡 Email</strong>
               <p><a href="mailto:0989593280iphone@gmail.com">0989593280iphone@gmail.com</a></p>
             </div>
           </div>
@@ -369,22 +369,17 @@
               <strong>NT$0</strong>
             </article>
             <article class="fee-card">
-              <span>Service Pack</span>
-              <h3>AI 解卦服務包</h3>
-              <p>一次性購買 50 次 AI 文字解讀服務，可用於起卦後 AI 初解與後續追問。服務次數僅限本站使用，不可轉讓、兌現或提領。</p>
-              <strong>NT$99 / 50 次</strong>
-            </article>
-            <article class="fee-card">
               <span>VIP</span>
               <h3>月費會員</h3>
-              <p>適合經常使用者，每日可使用 30 次 AI 解卦追問。此方案需綠界信用卡定期定額服務審核通過後開放。</p>
+              <p>適合經常使用者，會員期間每日可使用 30 則 AI 解卦追問。此方案為線上易經卜卦文字解讀訂閱服務。</p>
               <strong>NT$199 / 月</strong>
             </article>
           </div>
 
           <p class="fee-note">
+            目前線上銷售項目僅為月費會員訂閱；本服務非儲值型商品，不可轉讓、不可兌現、不可提領。
             本服務為線上易經卜卦與 AI 文字解讀輔助，內容僅供生活參考，不取代醫療、法律、投資或其他專業建議。
-            若付款成功後未自動開通、重複扣款或訂單異常，請來信客服協助處理。
+            若付款成功後未自動開通、重複扣款或訂單異常，請來信客服協助處理：0989593280iphone@gmail.com。
           </p>
         </div>
       </section>
@@ -483,7 +478,7 @@
           <article class="version-card">
             <span>04</span>
             <h3>會員與每日次數</h3>
-            <p>免費用戶每日 3 次 AI 詢問，另有 AI 解卦服務包與 VIP 月費方案，付款後可自動開通可用次數。</p>
+            <p>免費用戶每日 3 次 AI 詢問，月費會員每日 30 次 AI 詢問，付款後可自動開通會員資格。</p>
           </article>
           <article class="version-card">
             <span>05</span>
@@ -502,7 +497,7 @@
           <div class="version-timeline">
             <div>
               <strong>v1.2</strong>
-              <p>加入卜卦說明、AI 解卦服務包、每日免費次數控管與 AI 即時追問解卦。</p>
+              <p>加入卜卦說明、月費會員、每日免費次數控管與 AI 即時追問解卦。</p>
             </div>
             <div>
               <strong>v1.1</strong>
@@ -524,6 +519,12 @@
         <div class="history-list" id="historyList"></div>
       </section>
     </main>
+
+    <footer class="site-footer">
+      <strong>易策玄占｜奇幻文創</strong>
+      <span>線上銷售項目：月費會員訂閱 NT$199 / 月</span>
+      <a href="mailto:0989593280iphone@gmail.com">客服與審核聯絡 Email：0989593280iphone@gmail.com</a>
+    </footer>
 
     <dialog class="hex-dialog" id="hexDialog">
       <button class="icon-button dialog-close" id="dialogClose" type="button" aria-label="關閉">
@@ -550,11 +551,6 @@
             <p>每日 3 次 AI 追問</p>
           </article>
           <article class="plan-card">
-            <span>Service Pack</span>
-            <strong>AI 解卦服務包</strong>
-            <p>NT$99 / 50 次 AI 文字解讀服務</p>
-          </article>
-          <article class="plan-card">
             <span>VIP</span>
             <strong>月費會員</strong>
             <p>NT$199/月，每日 30 次，需信用卡定期定額</p>
@@ -568,13 +564,6 @@
             <input id="memberEmail" name="email" type="email" autocomplete="email" placeholder="you@example.com" required />
             <label for="memberLineName">LINE 顯示名稱</label>
             <input id="memberLineName" name="lineName" type="text" autocomplete="name" placeholder="方便付款後核對" />
-            <button class="member-apply-button" id="memberPointsButton" type="submit" name="product" value="service_pack">
-              <svg viewBox="0 0 24 24" aria-hidden="true">
-                <path d="M12 3 4 7v6c0 4.8 3.4 7.3 8 8 4.6-.7 8-3.2 8-8V7l-8-4Z" />
-                <path d="M8 12h8M12 8v8" />
-              </svg>
-              <span>購買 AI 解卦服務包 NT$99 / 50 次</span>
-            </button>
             <button class="member-apply-button" id="memberCheckoutButton" type="submit" name="product" value="vip">
               <svg viewBox="0 0 24 24" aria-hidden="true">
                 <path d="M12 3 4 7v6c0 4.8 3.4 7.3 8 8 4.6-.7 8-3.2 8-8V7l-8-4Z" />
@@ -590,7 +579,7 @@
             </svg>
             <span>需要協助，開啟 LINE</span>
           </button>
-          <p class="member-apply-status" id="memberApplyStatus" role="status">付款成功後會自動開通可用次數；若月費付款失敗，請確認綠界已開通信用卡定期定額。</p>
+          <p class="member-apply-status" id="memberApplyStatus" role="status">付款成功後會自動開通月費會員；若月費付款失敗，請確認綠界已開通信用卡定期定額。</p>
         </div>
       </div>
     </dialog>
