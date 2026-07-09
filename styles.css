@@ -563,7 +563,8 @@ h1 {
 }
 
 .member-apply-button,
-.member-line-button {
+.member-line-button,
+.member-back-button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -588,8 +589,17 @@ h1 {
     linear-gradient(180deg, #193f38, #0a2420);
 }
 
+.member-back-button {
+  border-color: rgba(156, 241, 204, 0.24);
+  color: #dff9ed;
+  background:
+    linear-gradient(180deg, rgba(156, 241, 204, 0.11), transparent),
+    linear-gradient(180deg, #13342f, #071c19);
+}
+
 .member-apply-button svg,
-.member-line-button svg {
+.member-line-button svg,
+.member-back-button svg {
   width: 21px;
   height: 21px;
   fill: none;
@@ -1464,6 +1474,20 @@ input::placeholder {
   left: calc(100% - 56px);
   margin: 12px 12px 0 auto;
   z-index: 3;
+}
+
+.member-dialog .dialog-close {
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  left: auto;
+  margin: 0;
+  z-index: 20;
+  border-color: rgba(232, 189, 98, 0.52);
+  background:
+    linear-gradient(180deg, rgba(255, 248, 220, 0.18), rgba(255, 248, 220, 0.02)),
+    rgba(2, 18, 15, 0.92);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.38);
 }
 
 .dialog-content {

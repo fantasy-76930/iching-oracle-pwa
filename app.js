@@ -2553,6 +2553,7 @@ function setupEvents() {
 
   $("#dialogClose").addEventListener("click", () => $("#hexDialog").close());
   $("#memberDialogClose").addEventListener("click", () => $("#memberDialog").close());
+  $("#memberDialogBackButton")?.addEventListener("click", () => $("#memberDialog").close());
   $("#hexDialog").addEventListener("click", (event) => {
     if (event.target.id === "hexDialog") $("#hexDialog").close();
   });
