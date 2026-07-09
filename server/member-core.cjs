@@ -255,7 +255,9 @@ function readBraceletOrder(payload) {
   const receiverZip = cleanZip(payload.receiverZip || payload.zip);
   const receiverAddress = cleanText(payload.receiverAddress || payload.address, 120);
   const note = cleanText(payload.orderNote || payload.note, 80);
+  const policyAccepted = ["yes", "true", "1", "on"].includes(String(payload.policyAccepted || "").toLowerCase());
 
+  if (!policyAccepted) return { error: "請先勾選同意商品規格、退換貨退款政策與隱私權告知。" };
   if (!BRACELET_COLORS.has(color)) return { error: "請選擇手鏈款式。" };
   if (!receiverName) return { error: "請填寫收件人姓名。" };
   if (!/^09\d{8}$/.test(receiverPhone)) return { error: "請填寫有效的收件人手機，例如 0912345678。" };
