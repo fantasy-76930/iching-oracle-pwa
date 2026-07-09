@@ -371,7 +371,7 @@ const DAILY_WEALTH_FLOWS = [
   "內容曝光有利，適合發布作品、案例或今日提醒",
   "時間管理就是財運，排程越清楚越不容易漏財",
   "適合修正定價，別把專業賣得太便宜",
-  "小額回饋能換大信任，適合做會員、熟客互動",
+  "小額回饋能換大信任，適合做熟客互動",
   "資料與名單是財庫，今天適合整理客戶資訊"
 ];
 const DAILY_ACTIONS = [
@@ -388,7 +388,7 @@ const DAILY_ACTIONS = [
   "把報價與交付範圍說清楚",
   "回覆重要訊息不要拖過今天",
   "把曝光內容排程出去",
-  "整理帳本與訂閱支出",
+  "整理帳本與固定支出",
   "向可信任的人請益",
   "把手上資源重新分類",
   "先問需求再提出方案",
@@ -455,7 +455,7 @@ const DAILY_THEMES = [
   { title: "談判日", focus: "適合談價格、談分工、談權責與談期限", advice: "柔和但堅定，界線清楚才有好合作" },
   { title: "回收日", focus: "適合收款、追蹤舊案、喚醒名單與回訪", advice: "財氣未必在新地方，也可能在舊關係裡" },
   { title: "學習日", focus: "適合研究工具、補足技能與吸收新方法", advice: "今天學到的省力方式，之後會變成收入差距" },
-  { title: "定價日", focus: "適合檢查報價、套餐、會員制與成本結構", advice: "不要只算價格，也要算時間與精神成本" },
+  { title: "定價日", focus: "適合檢查報價、商品組合與成本結構", advice: "不要只算價格，也要算時間與精神成本" },
   { title: "蓄勢日", focus: "適合低調布局、建立清單與等待成熟時機", advice: "不必急著被看見，先把準備做到位" }
 ];
 const DAILY_HASHTAGS = ["#玄卦堂", "#今日生肖運勢", "#財運方位", "#易經占卜", "#奇幻文創"];
@@ -1913,7 +1913,7 @@ function initMembership() {
 }
 
 function getDailyLimit() {
-  return state.member?.plan === "free" ? FREE_DAILY_AI_LIMIT : 30;
+  return FREE_DAILY_AI_LIMIT;
 }
 
 function remainingAiUses() {
@@ -1936,12 +1936,12 @@ function updateMemberUi() {
   const quotaText = $("#aiQuotaText");
   if (!planLabel || !quotaText) return;
 
-  const planName = state.member?.plan === "vip" ? "VIP 會員" : "免費會員";
+  const planName = currentPointBalance() > 0 ? "已購買手鏈" : "免費 AI 諮詢";
   const remaining = remainingAiUses();
   const points = currentPointBalance();
   planLabel.textContent = planName;
   quotaText.textContent = points > 0
-    ? `今日剩餘 ${remaining} 次 · 既有加購服務 ${points} 次`
+    ? `今日剩餘 ${remaining} 次 · 商品贈送 ${points} 次`
     : `今日剩餘 ${remaining} 次`;
 }
 
@@ -1952,8 +1952,11 @@ function canUseAiQuota() {
 
 function consumeAiQuota() {
   if (!state.member) initMembership();
-  if (state.member.plan !== "free") return;
-  state.member.usedToday = Number(state.member.usedToday || 0) + 1;
+  if (remainingAiUses() > 0) {
+    state.member.usedToday = Number(state.member.usedToday || 0) + 1;
+  } else if (currentPointBalance() > 0) {
+    state.member.pointsBalance = currentPointBalance() - 1;
+  }
   saveMember();
   updateMemberUi();
 }
@@ -1965,7 +1968,7 @@ function openMemberDialog() {
 
 function applyRemoteQuota(quota) {
   if (!state.member || !quota) return;
-  if (Number.isFinite(Number(quota.used)) && state.member.plan !== "vip") {
+  if (Number.isFinite(Number(quota.used))) {
     state.member.usedToday = Math.min(Number(quota.used), FREE_DAILY_AI_LIMIT);
   }
   if (Number.isFinite(Number(quota.pointsBalance))) {
@@ -1977,17 +1980,17 @@ function applyRemoteQuota(quota) {
 
 function buildMemberApplicationText() {
   if (!state.member) initMembership();
-  const planName = state.member.plan === "vip" ? "VIP 會員" : "免費會員";
+  const planName = currentPointBalance() > 0 ? "已購買手鏈" : "免費 AI 諮詢";
   const time = new Date().toLocaleString("zh-TW", { timeZone: "Asia/Taipei" });
 
   return [
-    "易策玄占會員申請",
-    `會員編號：${state.member.id}`,
-    `目前方案：${planName}`,
-    "申請方案：月費會員",
+    "易策玄占手鏈訂購協助",
+    `客戶編號：${state.member.id}`,
+    `目前狀態：${planName}`,
+    "需求：協助訂購不規則切面轉運串珠手鏈",
     `申請時間：${time}`,
-    "需求：開通每日更多 AI 解卦次數",
-    "付款：請依客服提供的方式付款，並回傳訂單資訊"
+    "商品：NT$499 / 條，附贈 50 則 AI 易經諮詢",
+    "付款與配送：請依客服提供的方式處理，並回傳收件資料"
   ].join("\n");
 }
 
@@ -2014,15 +2017,15 @@ async function handleMemberCheckoutSubmit(event) {
   prepareMemberCheckoutForm();
   const form = event.currentTarget;
   const status = $("#memberApplyStatus");
-  const product = "vip";
+  const product = "bracelet";
   if (!form.action) {
     event.preventDefault();
     status.textContent = "線上付款尚未設定，請先用 LINE 聯絡站主。";
     await handleMemberLineContact();
     return;
   }
-  status.textContent = product === "vip"
-    ? "正在建立月費會員訂單，準備前往付款頁..."
+  status.textContent = product === "bracelet"
+    ? "正在建立手鏈訂單，準備前往付款頁..."
     : "此方案暫停線上銷售。";
 }
 
@@ -2035,14 +2038,14 @@ async function handleMemberLineContact() {
     const copied = await copyMemberApplication(text);
     if (contactUrl) {
       window.open(contactUrl, "_blank", "noopener");
-      status.textContent = copied ? "已複製申請資料，並開啟聯絡頁。" : "已開啟聯絡頁，請把會員編號傳給站主。";
+      status.textContent = copied ? "已複製訂購資料，並開啟聯絡頁。" : "已開啟聯絡頁，請把客戶編號傳給站主。";
       return;
     }
     status.textContent = copied
-      ? "已複製會員申請資料，請貼給站主確認開通。"
-      : `會員編號：${state.member.id}。請截圖或複製這組編號給站主。`;
+      ? "已複製訂購協助資料，請貼給站主確認。"
+      : `客戶編號：${state.member.id}。請截圖或複製這組編號給站主。`;
   } catch {
-    status.textContent = `會員編號：${state.member.id}。請截圖或複製這組編號給站主。`;
+    status.textContent = `客戶編號：${state.member.id}。請截圖或複製這組編號給站主。`;
   }
 }
 
@@ -2056,13 +2059,8 @@ async function refreshOnlineMemberStatus() {
     const response = await fetch(url, { headers: { Accept: "application/json" } });
     if (!response.ok) return;
     const data = await response.json();
-    if (data.plan === "vip") {
-      state.member.plan = "vip";
-      state.member.vipUntil = data.activeUntil;
-    } else if (state.member.plan === "vip" && data.status !== "active") {
-      state.member.plan = "free";
-      state.member.vipUntil = "";
-    }
+    state.member.plan = "free";
+    state.member.vipUntil = "";
     if (Number.isFinite(Number(data.pointsBalance))) {
       state.member.pointsBalance = Math.max(Number(data.pointsBalance), 0);
     }
@@ -2538,6 +2536,7 @@ function setupEvents() {
   $("#hexSearch").addEventListener("input", renderLibrary);
   $("#aiForm").addEventListener("submit", handleAiSubmit);
   $("#memberButton").addEventListener("click", openMemberDialog);
+  $("#productOrderButton")?.addEventListener("click", openMemberDialog);
   $("#memberCheckoutForm").addEventListener("submit", handleMemberCheckoutSubmit);
   $("#memberLineButton").addEventListener("click", handleMemberLineContact);
   $("#copyAiConversationButton").addEventListener("click", copyAiConversation);

@@ -5,8 +5,14 @@ const ECPAY_ACTIONS = {
   stage: "https://payment-stage.ecpay.com.tw/Cashier/AioCheckOut/V5"
 };
 
-const DEFAULT_POINTS_PACK_AMOUNT = 99;
-const DEFAULT_POINTS_PACK_CREDITS = 50;
+const ECPAY_LOGISTICS_ACTIONS = {
+  production: "https://logistics.ecpay.com.tw/Express/Create",
+  stage: "https://logistics-stage.ecpay.com.tw/Express/Create"
+};
+
+const BRACELET_AMOUNT = 499;
+const BRACELET_AI_CREDITS = 50;
+const BRACELET_COLORS = new Set(["水草綠款", "藍灰靜心款", "黃虎眼款", "全黑守護款", "多彩石款", "孔雀石款"]);
 
 function jsonHeaders(origin = "*") {
   return {
@@ -40,6 +46,14 @@ function cleanMemberId(value) {
 
 function cleanEmail(value) {
   return cleanText(value, 120).toLowerCase();
+}
+
+function cleanPhone(value) {
+  return String(value || "").replace(/[^\d]/g, "").slice(0, 20);
+}
+
+function cleanZip(value) {
+  return String(value || "").replace(/[^\d]/g, "").slice(0, 6);
 }
 
 function taipeiDate(offsetDays = 0) {
@@ -108,6 +122,7 @@ async function saveMember(member) {
   ];
   if (member.email) commands.push(["SET", `member-email:${member.email}`, member.id]);
   if (member.latestTradeNo) commands.push(["SET", `trade:${member.latestTradeNo}`, member.id]);
+  if (member.latestLogisticsTradeNo) commands.push(["SET", `trade:${member.latestLogisticsTradeNo}`, member.id]);
   await redisPipeline(commands);
 }
 
@@ -171,37 +186,24 @@ function positiveInteger(value, fallback) {
 
 function checkoutProduct(payload) {
   const product = cleanText(payload.product || payload.productType || payload.plan, 20).toLowerCase();
-  if (["points", "service_pack", "ai_pack"].includes(product)) return "legacy_pack";
-  return "vip";
+  if (["vip", "member", "subscription", "points", "service_pack", "ai_pack"].includes(product)) return "legacy";
+  return "bracelet";
 }
 
 function checkoutProductConfig(product) {
-  if (product === "points") {
-    const amount = positiveInteger(process.env.POINTS_PACK_AMOUNT, DEFAULT_POINTS_PACK_AMOUNT);
-    const points = positiveInteger(process.env.POINTS_PACK_CREDITS, DEFAULT_POINTS_PACK_CREDITS);
-    return {
-      type: "points",
-      amount,
-      points,
-      tradeDesc: "易策玄占既有加購服務",
-      itemName: `易策玄占既有加購服務`
-    };
-  }
-
-  const amount = positiveInteger(process.env.MEMBERSHIP_MONTHLY_AMOUNT, 0);
   return {
-    type: "vip",
-    amount,
-    points: 0,
-    tradeDesc: "易策玄占月費會員",
-    itemName: `易策玄占月費會員 ${amount} 元/月`
+    type: "bracelet",
+    amount: BRACELET_AMOUNT,
+    points: BRACELET_AI_CREDITS,
+    tradeDesc: "不規則切面轉運串珠手鏈",
+    itemName: `不規則切面轉運串珠手鏈 x 1`
   };
 }
 
 function choosePaymentForProduct(productConfig) {
   const override = cleanText(process.env.ECPAY_CHOOSE_PAYMENT, 20);
   if (override) return override;
-  return productConfig.type === "points" ? "ALL" : "Credit";
+  return "ALL";
 }
 
 function escapeHtml(value) {
@@ -246,6 +248,96 @@ function checkoutUnavailablePage(message) {
   return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>付款尚未開通</title></head><body style="font-family:system-ui,sans-serif;background:#06110f;color:#f8e8b4;display:grid;place-items:center;min-height:100vh;margin:0"><main style="width:min(92vw,460px);padding:28px;border:1px solid rgba(232,189,98,.3);border-radius:12px;background:rgba(0,0,0,.25)"><h1>線上付款尚未開通</h1><p>${escapeHtml(message)}</p><p><a style="color:#8ee8c2" href="${appBaseUrl()}">回到易策玄占</a></p></main></body></html>`;
 }
 
+function readBraceletOrder(payload) {
+  const color = cleanText(payload.braceletColor || payload.color, 30);
+  const receiverName = cleanText(payload.receiverName || payload.name, 20);
+  const receiverPhone = cleanPhone(payload.receiverPhone || payload.phone);
+  const receiverZip = cleanZip(payload.receiverZip || payload.zip);
+  const receiverAddress = cleanText(payload.receiverAddress || payload.address, 120);
+  const note = cleanText(payload.orderNote || payload.note, 80);
+
+  if (!BRACELET_COLORS.has(color)) return { error: "請選擇手鏈款式。" };
+  if (!receiverName) return { error: "請填寫收件人姓名。" };
+  if (!/^09\d{8}$/.test(receiverPhone)) return { error: "請填寫有效的收件人手機，例如 0912345678。" };
+  if (!/^\d{3,6}$/.test(receiverZip)) return { error: "請填寫有效郵遞區號。" };
+  if (receiverAddress.length < 6) return { error: "請填寫完整收件地址。" };
+
+  return {
+    color,
+    receiverName,
+    receiverPhone,
+    receiverZip,
+    receiverAddress,
+    note
+  };
+}
+
+function logisticsConfigured() {
+  return Boolean(
+    process.env.ECPAY_LOGISTICS_ENABLED === "true" &&
+    process.env.ECPAY_LOGISTICS_SENDER_ZIP &&
+    process.env.ECPAY_LOGISTICS_SENDER_ADDRESS
+  );
+}
+
+function logisticsTradeNo(paymentTradeNo) {
+  return `LG${String(paymentTradeNo || Date.now()).replace(/[^A-Z0-9]/gi, "").toUpperCase()}`.slice(0, 20);
+}
+
+function parseEcpayResponseText(text) {
+  return Object.fromEntries(new URLSearchParams(String(text || "").replace(/\r?\n/g, "&")));
+}
+
+async function createBraceletLogisticsOrder(tradeNo, order) {
+  if (!logisticsConfigured()) {
+    return { ok: false, skipped: true, message: "ECPay logistics sender data is not configured." };
+  }
+
+  const env = process.env.ECPAY_ENV === "production" ? "production" : "stage";
+  const merchantTradeNo = logisticsTradeNo(tradeNo);
+  const params = {
+    MerchantID: process.env.ECPAY_MERCHANT_ID,
+    MerchantTradeNo: merchantTradeNo,
+    MerchantTradeDate: taipeiTradeDate(),
+    LogisticsType: "HOME",
+    LogisticsSubType: cleanText(process.env.ECPAY_LOGISTICS_SUBTYPE || "TCAT", 10),
+    GoodsAmount: BRACELET_AMOUNT,
+    GoodsName: `轉運串珠手鏈-${order.color}`.slice(0, 60),
+    SenderName: cleanText(process.env.ECPAY_LOGISTICS_SENDER_NAME || "奇幻文創", 10),
+    SenderPhone: cleanPhone(process.env.ECPAY_LOGISTICS_SENDER_PHONE || "0426335015"),
+    SenderCellPhone: cleanPhone(process.env.ECPAY_LOGISTICS_SENDER_CELL || "0989593280"),
+    SenderZipCode: cleanZip(process.env.ECPAY_LOGISTICS_SENDER_ZIP),
+    SenderAddress: cleanText(process.env.ECPAY_LOGISTICS_SENDER_ADDRESS, 60),
+    ReceiverName: cleanText(order.receiverName, 10),
+    ReceiverPhone: order.receiverPhone,
+    ReceiverCellPhone: order.receiverPhone,
+    ReceiverZipCode: order.receiverZip,
+    ReceiverAddress: cleanText(order.receiverAddress, 60),
+    Temperature: "0001",
+    Distance: "00",
+    Specification: "0001",
+    ScheduledDeliveryTime: "4",
+    ServerReplyURL: `${apiBaseUrl()}/api/ecpay-logistics-return`,
+    ClientReplyURL: `${appBaseUrl()}?logistics=created`
+  };
+  params.CheckMacValue = checkMacValue(params);
+
+  const response = await fetch(ECPAY_LOGISTICS_ACTIONS[env], {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams(params).toString()
+  });
+  const text = await response.text();
+  const body = parseEcpayResponseText(text);
+  return {
+    ok: response.ok && String(body.RtnCode || body.RtnCode2 || "1") === "1",
+    status: response.status,
+    merchantTradeNo,
+    body,
+    raw: text.slice(0, 1000)
+  };
+}
+
 async function handleMemberCheckout(rawPayload) {
   const payload = parsePayload(rawPayload);
   if (!dbConfigured()) {
@@ -262,10 +354,10 @@ async function handleMemberCheckout(rawPayload) {
   }
 
   const product = checkoutProduct(payload);
-  if (product === "legacy_pack") {
+  if (product === "legacy") {
     return {
       status: 410,
-      html: checkoutUnavailablePage("此一次性服務方案已暫停線上銷售，目前僅開放月費會員訂閱。")
+      html: checkoutUnavailablePage("此舊方案已暫停銷售，目前僅銷售不規則切面轉運串珠手鏈。")
     };
   }
   const productConfig = checkoutProductConfig(product);
@@ -275,9 +367,12 @@ async function handleMemberCheckout(rawPayload) {
 
   const memberId = cleanMemberId(payload.memberId);
   const email = cleanEmail(payload.email);
-  const lineName = cleanText(payload.lineName, 80);
   if (!email || !email.includes("@")) {
     return { status: 400, html: checkoutUnavailablePage("請回上一頁填寫有效 Email。") };
+  }
+  const order = readBraceletOrder(payload);
+  if (order.error) {
+    return { status: 400, html: checkoutUnavailablePage(order.error) };
   }
 
   const tradeNo = merchantTradeNo();
@@ -287,7 +382,6 @@ async function handleMemberCheckout(rawPayload) {
     ...(existing || {}),
     id: memberId,
     email,
-    lineName,
     plan: existing?.plan || "free",
     status: existing?.status || "pending_payment",
     pointsBalance: positiveInteger(existing?.pointsBalance, 0),
@@ -298,6 +392,7 @@ async function handleMemberCheckout(rawPayload) {
         type: productConfig.type,
         amount: productConfig.amount,
         points: productConfig.points,
+        order,
         createdAt: now
       }
     },
@@ -307,7 +402,6 @@ async function handleMemberCheckout(rawPayload) {
   await saveMember(member);
 
   const base = apiBaseUrl();
-  const execTimes = Number(process.env.MEMBERSHIP_EXEC_TIMES || 12);
   const params = {
     MerchantID: process.env.ECPAY_MERCHANT_ID,
     MerchantTradeNo: tradeNo,
@@ -324,16 +418,9 @@ async function handleMemberCheckout(rawPayload) {
     EncryptType: 1,
     CustomField1: memberId,
     CustomField2: email.slice(0, 100),
-    CustomField3: productConfig.type === "points" ? "ai_pack" : productConfig.type,
-    CustomField4: productConfig.points ? String(productConfig.points) : ""
+    CustomField3: productConfig.type,
+    CustomField4: order.color
   };
-  if (productConfig.type === "vip") {
-    params.PeriodAmount = productConfig.amount;
-    params.PeriodType = "M";
-    params.Frequency = 1;
-    params.ExecTimes = Number.isInteger(execTimes) && execTimes > 0 ? execTimes : 12;
-    params.PeriodReturnURL = `${base}/api/ecpay-return`;
-  }
   params.CheckMacValue = checkMacValue(params);
 
   const env = process.env.ECPAY_ENV === "production" ? "production" : "stage";
@@ -355,49 +442,50 @@ async function activateMemberFromPayment(payload) {
   if (!member) return { ok: false, message: "Member not found" };
 
   const pendingOrder = member.pendingOrders?.[tradeNo] || {
-    type: ["points", "ai_pack"].includes(cleanText(payload.CustomField3, 20)) ? "points" : "vip",
-    amount: Number(payload.TradeAmt || process.env.MEMBERSHIP_MONTHLY_AMOUNT || 0),
-    points: Number(payload.CustomField4 || 0)
+    type: cleanText(payload.CustomField3, 20) || "bracelet",
+    amount: Number(payload.TradeAmt || BRACELET_AMOUNT),
+    points: BRACELET_AI_CREDITS,
+    order: { color: cleanText(payload.CustomField4, 30) }
   };
   const paymentState = readEcpayPaymentState(payload);
   const paid = paymentState.paid;
   const now = new Date().toISOString();
   if (paid) {
-    if (pendingOrder.type === "points") {
-      const points = positiveInteger(pendingOrder.points || payload.CustomField4, DEFAULT_POINTS_PACK_CREDITS);
-      member.pointsBalance = positiveInteger(member.pointsBalance, 0) + points;
-      member.lastPointsPurchase = {
-        tradeNo,
-        points,
-        amount: Number(payload.TradeAmt || pendingOrder.amount || DEFAULT_POINTS_PACK_AMOUNT),
-        paidAt: now
-      };
-      if (member.plan !== "vip") member.status = "points_active";
-    } else {
-      member.plan = "vip";
-      member.status = "active";
-      member.activeUntil = taipeiDate(35);
-      member.lastPaymentAt = now;
-      member.lastPayment = {
-        tradeNo,
-        amount: Number(payload.TradeAmt || payload.amount || process.env.MEMBERSHIP_MONTHLY_AMOUNT || 0),
-        rtnCode: payload.RtnCode || null,
-        paymentDate: payload.PaymentDate || null
-      };
+    const points = positiveInteger(pendingOrder.points, BRACELET_AI_CREDITS);
+    member.pointsBalance = positiveInteger(member.pointsBalance, 0) + points;
+    member.status = "bracelet_paid";
+    member.lastPaymentAt = now;
+    member.lastBraceletOrder = {
+      tradeNo,
+      amount: Number(payload.TradeAmt || pendingOrder.amount || BRACELET_AMOUNT),
+      points,
+      order: pendingOrder.order || null,
+      paidAt: now,
+      rtnCode: payload.RtnCode || null,
+      paymentDate: payload.PaymentDate || null
+    };
+    const logisticsResult = await createBraceletLogisticsOrder(tradeNo, pendingOrder.order || {});
+    member.lastBraceletOrder.logistics = logisticsResult;
+    if (logisticsResult?.merchantTradeNo) {
+      member.latestLogisticsTradeNo = logisticsResult.merchantTradeNo;
     }
   } else {
-    if (member.status !== "active") {
+    if (member.status !== "bracelet_paid") {
       member.status = paymentState.simulated ? "payment_simulated" : "payment_failed";
     }
     member.lastPaymentError = paymentState.simulated
-      ? "ECPay simulated payment; member was not activated."
+      ? "ECPay simulated payment; order was not activated."
       : payload.RtnMsg || "Payment failed";
   }
   if (member.pendingOrders) delete member.pendingOrders[tradeNo];
   member.updatedAt = now;
   await saveMember(member);
-  const productName = pendingOrder.type === "points" ? "既有加購服務" : "月費會員";
-  await notifyLineOwner(`${paid ? "會員付款成功" : "會員付款未完成"}\n項目：${productName}\n會員：${member.email}\n會員編號：${member.id}\n交易：${tradeNo}`);
+  const logisticsText = member.lastBraceletOrder?.logistics?.ok
+    ? `\n物流單：${member.lastBraceletOrder.logistics.merchantTradeNo}`
+    : member.lastBraceletOrder?.logistics?.skipped
+      ? "\n物流：尚未設定寄件資料，請手動出貨或補環境變數"
+      : "";
+  await notifyLineOwner(`${paid ? "手鏈付款成功" : "手鏈付款未完成"}\n項目：不規則切面轉運串珠手鏈\n款式：${pendingOrder.order?.color || payload.CustomField4 || "未填"}\n客戶：${member.email}\n客戶編號：${member.id}\n交易：${tradeNo}${logisticsText}`);
 
   return { ok: true, paid, member };
 }
@@ -441,13 +529,39 @@ async function handleMemberStatus(memberId) {
   };
 }
 
+async function handleLogisticsReturn(payload) {
+  const data = parsePayload(payload);
+  const tradeNo = cleanText(data.MerchantTradeNo, 30);
+  if (!tradeNo) return { ok: false, message: "Missing MerchantTradeNo" };
+  const tradeResult = await redisPipeline([["GET", `trade:${tradeNo}`]]);
+  const memberId = tradeResult?.[0]?.result;
+  if (memberId) {
+    const member = await getMember(memberId);
+    if (member) {
+      member.lastLogisticsReturn = {
+        tradeNo,
+        rtnCode: data.RtnCode || null,
+        rtnMsg: data.RtnMsg || null,
+        logisticsId: data.AllPayLogisticsID || data.ECPayLogisticsID || null,
+        logisticsSubType: data.LogisticsSubType || null,
+        updatedAt: new Date().toISOString()
+      };
+      member.updatedAt = new Date().toISOString();
+      await saveMember(member);
+    }
+  }
+  await notifyLineOwner(`綠界物流通知\n物流交易：${tradeNo}\n狀態：${data.RtnCode || ""} ${data.RtnMsg || ""}\n物流編號：${data.AllPayLogisticsID || data.ECPayLogisticsID || ""}`);
+  return { ok: true };
+}
+
 function renderPaymentResultPage() {
-  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>付款結果</title><meta http-equiv="refresh" content="3;url=${appBaseUrl()}?member_checkout=complete"></head><body style="font-family:system-ui,sans-serif;background:#06110f;color:#f8e8b4;display:grid;place-items:center;min-height:100vh;margin:0"><main style="width:min(92vw,460px);padding:28px;border:1px solid rgba(232,189,98,.3);border-radius:12px;background:rgba(0,0,0,.25)"><h1>付款結果已送出</h1><p>系統正在確認會員狀態，稍後回到網站即可看到方案。</p><p><a style="color:#8ee8c2" href="${appBaseUrl()}?member_checkout=complete">回到易策玄占</a></p></main></body></html>`;
+  return `<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>付款結果</title><meta http-equiv="refresh" content="3;url=${appBaseUrl()}?member_checkout=complete"></head><body style="font-family:system-ui,sans-serif;background:#06110f;color:#f8e8b4;display:grid;place-items:center;min-height:100vh;margin:0"><main style="width:min(92vw,460px);padding:28px;border:1px solid rgba(232,189,98,.3);border-radius:12px;background:rgba(0,0,0,.25)"><h1>付款結果已送出</h1><p>系統正在確認訂單與贈送 AI 諮詢次數，稍後回到網站即可查看狀態。</p><p><a style="color:#8ee8c2" href="${appBaseUrl()}?member_checkout=complete">回到易策玄占</a></p></main></body></html>`;
 }
 
 module.exports = {
   activateMemberFromPayment,
   handleMemberCheckout,
+  handleLogisticsReturn,
   handleMemberStatus,
   jsonHeaders,
   parsePayload,

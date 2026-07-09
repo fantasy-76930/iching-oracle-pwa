@@ -10,7 +10,7 @@ module.exports = async function handler(req, res) {
     const result = await handleMemberCheckout(req.body);
     res.status(result.status).setHeader("Content-Type", "text/html; charset=utf-8").end(result.html);
   } catch (error) {
-    console.error("Member checkout failed", error);
-    res.status(500).setHeader("Content-Type", "text/html; charset=utf-8").end("會員付款流程暫時無法啟動。");
+    console.error("Order checkout failed", error);
+    res.status(500).setHeader("Content-Type", "text/html; charset=utf-8").end("訂單付款流程暫時無法啟動。");
   }
 };
