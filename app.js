@@ -2013,11 +2013,43 @@ function prepareMemberCheckoutForm() {
   $("#checkoutSourceUrl").value = window.location.href;
 }
 
+function normalizeTaiwanPhoneInput(value) {
+  const normalized = String(value || "").replace(/[０-９]/g, (digit) =>
+    String.fromCharCode(digit.charCodeAt(0) - 0xfee0)
+  );
+  let digits = normalized.replace(/[^\d]/g, "");
+
+  if (digits.startsWith("00886")) digits = digits.slice(5);
+  else if (digits.startsWith("886")) digits = digits.slice(3);
+  if (digits && !digits.startsWith("0")) digits = `0${digits}`;
+
+  return digits.slice(0, 20);
+}
+
+function normalizeCheckoutPhone() {
+  const input = $("#receiverPhone");
+  if (!input) return "";
+  input.value = normalizeTaiwanPhoneInput(input.value);
+  return input.value;
+}
+
 async function handleMemberCheckoutSubmit(event) {
   prepareMemberCheckoutForm();
   const form = event.currentTarget;
   const status = $("#memberApplyStatus");
   const product = "bracelet";
+  const phoneInput = $("#receiverPhone");
+  const phone = normalizeCheckoutPhone();
+
+  if (!/^09\d{8}$/.test(phone)) {
+    event.preventDefault();
+    phoneInput.setCustomValidity("請輸入有效的台灣手機號碼，例如 0912345678。");
+    phoneInput.reportValidity();
+    status.textContent = "請確認收件人手機號碼後再前往付款。";
+    return;
+  }
+  phoneInput.setCustomValidity("");
+
   if (!form.action) {
     event.preventDefault();
     status.textContent = "線上付款尚未設定，請先用 LINE 聯絡站主。";
@@ -2538,6 +2570,8 @@ function setupEvents() {
   $("#memberButton").addEventListener("click", openMemberDialog);
   $("#productOrderButton")?.addEventListener("click", openMemberDialog);
   $("#memberCheckoutForm").addEventListener("submit", handleMemberCheckoutSubmit);
+  $("#receiverPhone")?.addEventListener("blur", normalizeCheckoutPhone);
+  $("#receiverPhone")?.addEventListener("input", (event) => event.currentTarget.setCustomValidity(""));
   $("#memberLineButton").addEventListener("click", handleMemberLineContact);
   $("#copyAiConversationButton").addEventListener("click", copyAiConversation);
   $("#dailyPostGenerateButton").addEventListener("click", () => renderDailyFortunePost(true));

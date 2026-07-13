@@ -49,7 +49,16 @@ function cleanEmail(value) {
 }
 
 function cleanPhone(value) {
-  return String(value || "").replace(/[^\d]/g, "").slice(0, 20);
+  const normalized = String(value || "").replace(/[０-９]/g, (digit) =>
+    String.fromCharCode(digit.charCodeAt(0) - 0xfee0)
+  );
+  let digits = normalized.replace(/[^\d]/g, "");
+
+  if (digits.startsWith("00886")) digits = digits.slice(5);
+  else if (digits.startsWith("886")) digits = digits.slice(3);
+  if (digits && !digits.startsWith("0")) digits = `0${digits}`;
+
+  return digits.slice(0, 20);
 }
 
 function cleanZip(value) {
